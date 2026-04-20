@@ -1,0 +1,3000 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>猫咪大作战 - 战斗Demo（腾讯云 COS 资源）</title>
+  <style>
+    :root {
+      color-scheme: light;
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+    }
+    body {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #1d2a35;
+      color: #fff;
+      padding: 12px;
+    }
+    .app-shell {
+      display: flex;
+      align-items: flex-start;
+      gap: 24px;
+      width: min(100%, 1160px);
+      justify-content: center;
+    }
+    .frame {
+      position: relative;
+      width: min(100vw - 24px, calc((100vh - 24px) * 0.45));
+      aspect-ratio: 720 / 1600;
+      border: 2px solid #ffffff40;
+      border-radius: 18px;
+      overflow: hidden;
+      background: #000;
+      box-shadow: 0 20px 45px #00000066;
+      touch-action: none;
+    }
+    .load-overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(165deg, #0f172a 0%, #1a2740 100%);
+      transition: opacity 0.35s ease, visibility 0.35s ease;
+    }
+    .load-overlay.load-overlay--done {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+    .load-box {
+      width: min(86%, 400px);
+      text-align: center;
+      padding: 20px 16px;
+    }
+    .load-title {
+      font-size: 22px;
+      font-weight: 700;
+      color: #e8f4ff;
+      margin-bottom: 18px;
+    }
+    .load-bar-outer {
+      height: 12px;
+      border-radius: 999px;
+      background: #ffffff22;
+      overflow: hidden;
+      margin-bottom: 12px;
+    }
+    .load-bar-inner {
+      height: 100%;
+      width: 0%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, #3d8bfd, #67e8a8);
+      transition: width 0.2s ease-out;
+    }
+    .load-hint {
+      font-size: 15px;
+      color: #a8c4e8;
+    }
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    .debug-panel {
+      width: 260px;
+      min-height: 280px;
+      border: 2px solid #ffffff55;
+      border-radius: 14px;
+      background: #0f1c2be0;
+      box-shadow: 0 10px 28px #00000066;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .debug-panel-block {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .debug-panel-skills {
+      margin-top: 2px;
+      padding-top: 12px;
+      border-top: 1px solid #ffffff33;
+    }
+    .debug-panel-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: #d8ebff;
+    }
+    .debug-panel-subtitle {
+      font-size: 17px;
+      font-weight: 700;
+      color: #a8d4ff;
+    }
+    .debug-panel-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .debug-btn {
+      border: 1px solid #ffffff80;
+      border-radius: 10px;
+      background: #2ecc71;
+      color: #103717;
+      padding: 10px 12px;
+      font-size: 18px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.12s ease, filter 0.12s ease;
+    }
+    .debug-btn:hover {
+      filter: brightness(1.05);
+      transform: translateY(-1px);
+    }
+    .debug-btn:active {
+      transform: translateY(0);
+    }
+    .debug-btn-boss {
+      background: #e67e22;
+      color: #2a1203;
+    }
+    .debug-btn-boss:hover {
+      filter: brightness(1.06);
+    }
+    .debug-btn-round2 {
+      background: #3498db;
+      color: #0b1f2e;
+    }
+    .debug-btn-round2:hover {
+      filter: brightness(1.06);
+    }
+    .duck-test-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+    .duck-test-btn {
+      border: 1px solid #ffffff66;
+      border-radius: 8px;
+      background: #1f3f67;
+      color: #e6f2ff;
+      padding: 8px 6px;
+      font-size: 12px;
+      line-height: 1.2;
+      font-weight: 700;
+      white-space: normal;
+      cursor: pointer;
+      transition: filter 0.12s ease, transform 0.12s ease;
+    }
+    .duck-test-btn:hover {
+      filter: brightness(1.08);
+      transform: translateY(-1px);
+    }
+    .duck-test-btn:active {
+      transform: translateY(0);
+    }
+    .duck-tooltip {
+      position: fixed;
+      z-index: 30;
+      max-width: 280px;
+      pointer-events: none;
+      border: 1px solid #ffffff4a;
+      border-radius: 10px;
+      background: #061424f2;
+      color: #e7f2ff;
+      box-shadow: 0 10px 28px #00000066;
+      padding: 9px 10px;
+      font-size: 12px;
+      line-height: 1.45;
+      white-space: pre-line;
+      opacity: 0;
+      transform: translateY(4px);
+      transition: opacity 0.14s ease, transform 0.14s ease;
+    }
+    .duck-tooltip.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .debug-params {
+      display: none;
+      border: 1px solid #ffffff2e;
+      border-radius: 10px;
+      background: #07111dcc;
+      padding: 10px;
+      max-height: 520px;
+      overflow: auto;
+      font-size: 12px;
+      line-height: 1.5;
+      color: #d6e8ff;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    @media (max-width: 980px) {
+      .app-shell {
+        flex-direction: column;
+        align-items: center;
+      }
+      .debug-panel {
+        width: min(96vw, 560px);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <div class="frame">
+      <div class="load-overlay" id="loadOverlay" aria-live="polite" aria-busy="true">
+        <div class="load-box">
+          <div class="load-title">加载资源</div>
+          <div class="load-bar-outer" role="progressbar" aria-valuemin="0" aria-valuemax="100" id="loadBarOuter">
+            <div class="load-bar-inner" id="loadBarInner"></div>
+          </div>
+          <div class="load-hint" id="loadHint">0 / 12 · 0%</div>
+        </div>
+      </div>
+      <canvas id="game" width="720" height="1600"></canvas>
+    </div>
+    <aside class="debug-panel">
+      <section class="debug-panel-block">
+        <div class="debug-panel-title">调试面板</div>
+        <div class="debug-panel-actions">
+          <button id="debugRestartBtn" class="debug-btn" type="button">重新开始</button>
+          <button
+            id="debugRound2Btn"
+            class="debug-btn debug-btn-round2"
+            type="button"
+            title="从第2关第1回合开始；本关全部波次清空后会正常进入第3关（与正常开局后连续通关相同）。"
+          >
+            第2关
+          </button>
+          <button id="debugBossLevelBtn" class="debug-btn debug-btn-boss" type="button">boss关</button>
+        </div>
+      </section>
+      <section class="debug-panel-block debug-panel-skills">
+        <div class="debug-panel-subtitle">技能调试</div>
+        <div class="duck-test-grid">
+          <button class="duck-test-btn" type="button" data-duck-name="雀喵">雀喵</button>
+          <button class="duck-test-btn" type="button" data-duck-name="豹喵">豹喵</button>
+          <button class="duck-test-btn" type="button" data-duck-name="狸花喵">狸花喵</button>
+          <button class="duck-test-btn" type="button" data-duck-name="阿比喵">阿比喵</button>
+        </div>
+      </section>
+      <div id="duckTooltip" class="duck-tooltip" role="tooltip" aria-hidden="true"></div>
+      <div id="debugParams" class="debug-params"></div>
+    </aside>
+  </div>
+
+  <script>
+    const canvas = document.getElementById("game");
+    const ctx = canvas.getContext("2d");
+
+    const W = canvas.width;
+    const H = canvas.height;
+    const BATTLE_TOP = 360;
+    const BATTLE_BOTTOM = 1520;
+    const PLAYER_LINE_Y = 330;
+    const HP_BAR_HEIGHT = 28;
+    const HP_BAR_BOTTOM = PLAYER_LINE_Y - 10;
+    const HP_BAR_TOP = HP_BAR_BOTTOM - HP_BAR_HEIGHT;
+    const HUD_ROUND_FONT_PX = Math.round(15 * 1.2);
+    const HUD_TITLE_FONT_PX = HUD_ROUND_FONT_PX * 2;
+    const HP_TEXT_FONT_PX = Math.round(18 * 1.2);
+    const HP_TEXT_FONT = `bold ${HP_TEXT_FONT_PX}px Microsoft YaHei`;
+    /** 回合技能提示：血条下、战场分隔线（PLAYER_LINE）上 */
+    const TURN_HINT_FONT_PX = Math.round(21 * 1.05);
+    const TURN_HINT_LINE_H = 30;
+    const HUD_PROGRESS_BAR_Y = 90;
+    const HUD_PROGRESS_BAR_H = 24;
+    const HUD_PROGRESS_TEXT_Y = HUD_PROGRESS_BAR_Y + HUD_PROGRESS_BAR_H / 2;
+    const SHOOT_ORIGIN = { x: W / 2, y: PLAYER_LINE_Y + 14 };
+    const DUCK_HUD_LEFT = 28;
+    const DUCK_HUD_WIDTH = 664;
+    const DUCK_HUD_Y = 208;
+    const DUCK_AVATAR_RX = 70;
+    const DUCK_AVATAR_RY = 56;
+    const DUCK_AVATAR_RING_R = 80;
+    const HUD_FOCUS_FLASH_DURATION = 0.18;
+    const HUD_FOCUS_FLOAT_AMPLITUDE = 2.6;
+    const HUD_FOCUS_FLOAT_SPEED = 5.4;
+    const HUD_THEME = {
+      title: "#f7f7f7",
+      progressTrack: "#6a320d",
+      progressStroke: "#f4b400",
+      progressFill: "#f2c94c",
+      roundText: "#e8f5ff",
+      cardFillActive: "#f7fdffe8",
+      cardFillIdle: "#eef7ffcf",
+      cardStroke: "#d8e6f8",
+      cardGlow: "rgba(110,195,255,0.32)",
+      hpTrack: "#2f5233",
+      hpTrackStroke: "#ffffff80",
+      hpFill: "#67e06a",
+      hpText: "#ffffff",
+      hpTextStroke: "#000000"
+    };
+    const SKILL_BADGE_THEME = {
+      splitShot: { text: "裂", color: "#5e6bff" },
+      bombShot: { text: "炸", color: "#ff7a45" },
+      normal: { text: "普", color: "#2fcf9b" },
+      abiCombo: { text: "追", color: "#d48cff" }
+    };
+    const MONSTER_COLS = 6;
+    const CELL_W = W / MONSTER_COLS;
+    const CELL_H = 130;
+    const MONSTER_ROW_MOVE_DURATION = 0.52;
+    const MONSTER_ROW_JUMP_PX = 24;
+    /** 上移过程透视感：中间略放大，落地恢复 1（不影响碰撞半径） */
+    const MONSTER_ROW_MOVE_SCALE_PEAK = 1.12;
+    /** 初始/回合刷怪区域起始行（相对原布局整体上移一行，对应图中红区一带） */
+    const MONSTER_START_ROW = 3;
+    const MONSTER_SPAWN_ROW_COUNT = 5;
+    /** 增援两行：绿色行 = 初始 5 行网格最底行；再下一行 = 绿色正下方 */
+    const MONSTER_REINFORCE_ROW_GREEN = MONSTER_START_ROW + MONSTER_SPAWN_ROW_COUNT - 1;
+    const MONSTER_REINFORCE_ROW_BELOW_GREEN = MONSTER_REINFORCE_ROW_GREEN + 1;
+    const MAX_MONSTERS_PER_ROW = 4;
+    const MIN_MONSTERS_PER_STAGE = 8;
+    const MAX_MONSTERS_PER_STAGE = 15;
+    /** 每关 3 回合：前 2 回合仅小怪，第 3 回合 Boss+小怪 */
+    const ROUNDS_PER_STAGE = 3;
+    /** 怪物整体每上移该步数，在最下沿补 2 行增援（行内 1~4 规则同 buildRowSpawnCols） */
+    const STAGE_REINFORCE_MOVE_STEPS = 2;
+    /** 每回合最多触发增援次数（每次仍刷 2 行） */
+    const STAGE_REINFORCE_PER_ROUND = 2;
+    /** 每波增援（每次刷 2 行）有该概率在其中带 1 只炸弹怪 */
+    const REINFORCE_BOMB_MOB_CHANCE = 0.6;
+    /** 增援怪入场：时长、自下位移（像素） */
+    const REINFORCE_SPAWN_DURATION = 0.42;
+    const REINFORCE_SPAWN_SLIDE_PX = 44;
+    const MONSTER_HP_MIN = 1;
+    const MONSTER_HP_MAX = 100;
+    const MONSTER_HP_BOSS_MIN = 300;
+    const MONSTER_HP_BOSS_MAX = 500;
+    /** 大关总数上限：若改为 2，则通关第 2 大关后即胜利，不会出现第 3 关。 */
+    const MAX_ROUND = 20;
+    const BULLET_RADIUS_SCALE = 1.2;
+    const EGG_RADIUS = 26 * BULLET_RADIUS_SCALE;
+    const EGG_HIT_DAMAGE_MIN = 15;
+    const EGG_HIT_DAMAGE_MAX = 30;
+    const SPLIT_EGG_HIT_DAMAGE_MIN = 5;
+    const SPLIT_EGG_HIT_DAMAGE_MAX = 10;
+    const MONSTER_RADIUS_NORMAL = 51;
+    const MONSTER_RADIUS_BOSS = 63;
+    /** 怪物中心不超出画布下缘的最大行号（增援行 clamp 用） */
+    const MONSTER_ROW_MAX = Math.floor((H - BATTLE_TOP - CELL_H * 0.5 - MONSTER_RADIUS_NORMAL - 8) / CELL_H);
+    const MONSTER_NORMAL_FACE_FRAC = 0.7;
+    const MONSTER_NORMAL_DISPLAY_SCALE = 0.81;
+    /** Boss 贴图缩放（相对原 0.74 再 ×1.3 约为当前体量） */
+    const MONSTER_BOSS_DISPLAY_SCALE = 0.74 * 1.3;
+    const BOUNCE_FORCE_RANDOM_MIN = 1.02;
+    const BOUNCE_FORCE_RANDOM_MAX = 1.02;
+    const MONSTER_BOUNCE_RANDOM_MIN = 1.02;
+    const MONSTER_BOUNCE_RANDOM_MAX = 1.02;
+    const MONSTER_MIN_OUTWARD_REBOUND_SPEED = 190;
+    const MONSTER_MIN_UPWARD_REBOUND_SPEED = 165;
+    const MONSTER_MIN_REBOUND_SPEED = 150;
+    const MONSTER_REBOUND_KEEP_RATIO = 0.82;
+    const FOLLOWUP_MONSTER_REBOUND_BOOST = 1.18;
+    const FOLLOWUP_MONSTER_MIN_REBOUND_SPEED = 210;
+    const FOLLOWUP_MONSTER_MIN_UPWARD_REBOUND_SPEED = 200;
+    const MONSTER_MIN_TOTAL_REBOUND_SPEED = 0;
+    const MONSTER_HIT_COOLDOWN = 0.012;
+    const MONSTER_HIT_SHAKE_DURATION = 0.13;
+    const MONSTER_HIT_SHAKE_PX = 30;
+    /** 受击时相对 1 的缩放脉冲幅度（与晃动同周期，先放大再收回） */
+    const MONSTER_HIT_SCALE_PULSE = 0.38;
+    /** 受击时白色闪烁峰值不透明度（随后随时间衰减） */
+    const MONSTER_HIT_FLASH_ALPHA_MAX = 0.94;
+    const HIT_SHAKE_DURATION = 0.12;
+    const HIT_SHAKE_STRENGTH = 11;
+    const HIT_SHAKE_MAX = 18;
+    const SPLIT_TRIGGER_HITS = 3;
+    const SPLIT_BULLET_ANGLE_DEG = 18;
+    const SPLIT_BULLET_SPEED_FACTOR = 0.92;
+    const BOMB_RADIUS = EGG_RADIUS;
+    /** 仅绘制炸弹子弹贴图用，不影响碰撞与爆炸范围 */
+    const BOMB_BULLET_SPRITE_DISPLAY_SCALE = 1.3;
+    const BOMB_TRIGGER_HITS = [2, 4, 6];
+    const BOMB_TIMER_SECONDS = 1;
+    const BOMB_BLAST_RADIUS = BOMB_RADIUS * 10; // 原 2 倍范围，现放大到 5 倍
+    const BOMB_HIT_DAMAGE_MIN = 30;
+    const BOMB_HIT_DAMAGE_MAX = 60;
+    const COMBO_MIN_DISPLAY = 2;
+    const COMBO_HOLD_SECONDS_AFTER_CLEAR = 2;
+    const COMBO_POP_DURATION = 0.18;
+    const COMBO_POP_SCALE_MAX = 0.16;
+    /** 多杀横幅：危险区下方战斗区中部，与「连击」区分 */
+    const MULTIKILL_BANNER_Y = BATTLE_TOP + 198;
+    const MULTIKILL_BAR_WIDTH_RATIO = 0.74;
+    /** 背景条高度（44px 字 + 粗描边需额外上下留白） */
+    const MULTIKILL_BAR_HEIGHT = 92;
+    const MULTIKILL_BAR_CORNER_R = 18;
+    const MULTIKILL_DURATION_IN = 0.22;
+    const MULTIKILL_DURATION_HOLD = 0.88;
+    const MULTIKILL_DURATION_OUT = 0.42;
+    const BOMB_SHAKE_AMPLITUDE = 2.2;
+    const BOMB_SHAKE_FREQUENCY = 18;
+    const BOMB_EXPLOSION_DURATION = 0.28;
+    const BOMB_FLASH_DURATION = 0.12;
+    const DAMAGE_TEXT_DURATION = 0.5;
+    const DAMAGE_TEXT_RISE = 42;
+    const DAMAGE_TEXT_FONT_SCALE = 1;
+    const FIRST_BOUNCE_UPWARD_SPEED_CAP_FACTOR = 0.5;
+    const NEXT_BOUNCE_UPWARD_SPEED_CAP_FACTOR = 0.48;
+    const BOUNCE_SPEED_GAIN_PER_HIT = 0.02;
+    const BOUNCE_SPEED_GAIN_MAX = 0.2;
+    const EGG_FINAL_SPEED_MULTIPLIER = 1.6;
+    const AIM_PREDICT_STEPS = 180;
+    const AIM_PREDICT_DT = 1 / 120;
+    /** 每预测步内细分，避免引线穿过老鼠 */
+    const AIM_PREDICT_SUB_STEPS = 14;
+    /** 绘制前抽稀：去掉过密折点，减少杂乱重叠 */
+    const AIM_DRAW_MIN_POINT_DIST = 20;
+    /** 首次碰到老鼠后，引线尾段（之后整段折线长）只保留该比例，避免画出大量后续反弹 */
+    const AIM_PATH_TAIL_AFTER_FIRST_HIT = 1 / 3;
+    const PHYSICS_PRESETS = {
+      // 预设A: 街机爽感，速度更快、反弹更多
+      A: {
+        name: "A-街机爽感",
+        eggInitialSpeed: 980,
+        eggGravity: 1456,
+        eggAirDrag: 0.08,
+        eggWallBounceDamp: 0.95,
+        eggTopBounceDamp: 0.95,
+        eggMonsterBounceDamp: 0.98,
+        eggHitDownBias: 0,
+        eggPostBounceFallBoost: 0
+      },
+      // 预设B: 策略下坠，速度偏慢、回落更明显
+      B: {
+        name: "B-策略下坠",
+        eggInitialSpeed: 780,
+        eggGravity: 1850,
+        eggAirDrag: 0.26,
+        eggWallBounceDamp: 0.76,
+        eggTopBounceDamp: 0.68,
+        eggMonsterBounceDamp: 1.014,
+        eggHitDownBias: 64,
+        eggPostBounceFallBoost: 112
+      }
+    };
+    const ACTIVE_PHYSICS_PRESET = "A";
+    const physics = PHYSICS_PRESETS[ACTIVE_PHYSICS_PRESET];
+    const DUCK_TEST_CONFIGS = {
+      "雀喵": { name: "雀喵", color: "#7b6cff", skill: "分裂弹", skillType: "splitShot" },
+      "豹喵": { name: "豹喵", color: "#4cc9f0", skill: "炸裂弹", skillType: "bombShot" },
+      "狸花喵": { name: "狸花喵", color: "#9be15d", skill: "普通攻击", skillType: "normal" },
+      "阿比喵": { name: "阿比喵", color: "#c9a0e8", skill: "连击追弹", skillType: "abiCombo" }
+    };
+    const DUCK_TOOLTIP_TEXT = {
+      "雀喵": `主子弹伤害：${EGG_HIT_DAMAGE_MIN}~${EGG_HIT_DAMAGE_MAX}\n技能效果：连续命中3次后分裂2发子弹\n技能伤害：副子弹 ${SPLIT_EGG_HIT_DAMAGE_MIN}~${SPLIT_EGG_HIT_DAMAGE_MAX}`,
+      "豹喵": `主子弹伤害：${BOMB_HIT_DAMAGE_MIN}~${BOMB_HIT_DAMAGE_MAX}\n技能效果：炸弹碰到怪物后短暂停留，产生范围爆炸\n技能伤害：范围伤害 ${BOMB_HIT_DAMAGE_MIN}~${BOMB_HIT_DAMAGE_MAX}`,
+      "狸花喵": `主子弹伤害：${EGG_HIT_DAMAGE_MIN}~${EGG_HIT_DAMAGE_MAX}\n技能效果：普普通通的喵，无额外技能\n技能伤害：无`,
+      "阿比喵": `主子弹伤害：${EGG_HIT_DAMAGE_MIN}~${EGG_HIT_DAMAGE_MAX}\n技能效果：单次连击数达到一定次数时，额外发射 1 发追踪弹\n技能伤害：追踪弹 ${EGG_HIT_DAMAGE_MIN}~${EGG_HIT_DAMAGE_MAX}（与主子弹相同）`
+    };
+    const duckAvatarImages = {
+      "雀喵": new Image(),
+      "豹喵": new Image(),
+      "狸花喵": new Image(),
+      "阿比喵": new Image()
+    };
+    const duckAvatarProcessed = {};
+    /**
+     * 仅 GitHub + 腾讯云：入口用 GitHub Pages 打开本页（如 https://用户名.github.io/仓库名/chinaindex/），
+     * 大图放 COS；此处填 COS 根地址（勿末尾 /）。COS 桶 CORS 的 Origin 填你的 github.io 页面地址。
+     * 若 HTML 与 assets 同域（整站 GitHub 或整站 COS）可改回 ""（相对路径）。
+     */
+    const ASSET_BASE = "https://mutang-1312158805.cos.ap-guangzhou.myqcloud.com";
+    function assetUrl(relativePath) {
+      const p = String(relativePath).replace(/^\/+/, "");
+      if (!ASSET_BASE) return p;
+      return `${ASSET_BASE.replace(/\/+$/, "")}/${p}`;
+    }
+    function setImgCrossOriginIfNeeded(img) {
+      if (!img) return;
+      if (ASSET_BASE) img.crossOrigin = "anonymous";
+      else img.removeAttribute("crossOrigin");
+    }
+    const CAT_AVATAR_ASSET_VER = 4;
+    function catAvatarSrc(filename) {
+      return `${assetUrl(`assets/cats/avatars/${filename}`)}?v=${CAT_AVATAR_ASSET_VER}`;
+    }
+
+    const LOAD_TOTAL = 12;
+    const loadReportedKeys = new Set();
+    let gameBootstrapped = false;
+    function updateLoadOverlayUI() {
+      const n = loadReportedKeys.size;
+      const pct = Math.min(100, Math.round((n / LOAD_TOTAL) * 100));
+      const inner = document.getElementById("loadBarInner");
+      const hint = document.getElementById("loadHint");
+      const outer = document.getElementById("loadBarOuter");
+      if (inner) inner.style.width = `${pct}%`;
+      if (hint) hint.textContent = `${n} / ${LOAD_TOTAL} · ${pct}%`;
+      if (outer) outer.setAttribute("aria-valuenow", String(pct));
+    }
+    function reportAssetOnce(key) {
+      if (loadReportedKeys.has(key)) return;
+      loadReportedKeys.add(key);
+      updateLoadOverlayUI();
+      if (loadReportedKeys.size < LOAD_TOTAL) return;
+      const ov = document.getElementById("loadOverlay");
+      if (ov) {
+        ov.classList.add("load-overlay--done");
+        ov.setAttribute("aria-busy", "false");
+      }
+      if (!gameBootstrapped) {
+        gameBootstrapped = true;
+        resetGame();
+        requestAnimationFrame(loop);
+      }
+    }
+
+    function setDuckAvatar(name, src) {
+      const img = duckAvatarImages[name];
+      if (!img) return;
+      const finish = () => {
+        if (img.naturalWidth) duckAvatarProcessed[name] = img;
+        reportAssetOnce(`duck-${name}`);
+      };
+      img.onload = finish;
+      img.onerror = () => {
+        reportAssetOnce(`duck-${name}`);
+      };
+      setImgCrossOriginIfNeeded(img);
+      img.src = src;
+      if (img.complete) finish();
+    }
+
+    setDuckAvatar("雀喵", catAvatarSrc("catSplitAvatar.png"));
+    setDuckAvatar("豹喵", catAvatarSrc("catBombAvatar.png"));
+    setDuckAvatar("狸花喵", catAvatarSrc("catNormalAvatar.png"));
+    setDuckAvatar("阿比喵", catAvatarSrc("catAbiAvatar.png"));
+    const MONSTER_ASSET_VER = 7;
+    function monsterImgSrc(pathUnderMonsters) {
+      return `${assetUrl(`assets/monsters/${pathUnderMonsters}`)}?v=${MONSTER_ASSET_VER}`;
+    }
+    const monsterImages = {
+      normal: new Image(),
+      boss: new Image(),
+      bombMob: new Image()
+    };
+    const monsterImageProcessed = {};
+    function setMonsterImage(type, src) {
+      const img = monsterImages[type];
+      if (!img) return;
+      const finish = () => {
+        if (img.naturalWidth) monsterImageProcessed[type] = img;
+        reportAssetOnce(`mon-${type}`);
+      };
+      img.onload = finish;
+      img.onerror = () => {
+        reportAssetOnce(`mon-${type}`);
+      };
+      setImgCrossOriginIfNeeded(img);
+      img.src = src;
+      if (img.complete) finish();
+    }
+    setMonsterImage("normal", monsterImgSrc("normal/monsterNormal.png"));
+    setMonsterImage("boss", monsterImgSrc("boss/monsterBoss.png"));
+    setMonsterImage("bombMob", monsterImgSrc("normal/monsterBomb.png"));
+
+    const BULLET_ASSET_VER = 2;
+    function bulletSrc(filename) {
+      return `${assetUrl(`assets/bullets/${filename}`)}?v=${BULLET_ASSET_VER}`;
+    }
+    const bulletImages = {
+      normal: new Image(),
+      split: new Image(),
+      abi: new Image(),
+      bomb: new Image()
+    };
+    const bulletImageProcessed = {};
+    function setBulletImage(key, src) {
+      const img = bulletImages[key];
+      if (!img) return;
+      const finish = () => {
+        if (!img.naturalWidth) {
+          img.__bulletUnavailable = true;
+        } else {
+          bulletImageProcessed[key] = img;
+        }
+        reportAssetOnce(`bullet-${key}`);
+      };
+      img.onerror = () => {
+        img.__bulletUnavailable = true;
+        reportAssetOnce(`bullet-${key}`);
+      };
+      img.onload = finish;
+      setImgCrossOriginIfNeeded(img);
+      img.src = src;
+      if (img.complete) finish();
+    }
+    setBulletImage("normal", bulletSrc("bulletNormal.png"));
+    setBulletImage("split", bulletSrc("bulletSplit.png"));
+    setBulletImage("abi", bulletSrc("bulletAbi.png"));
+    setBulletImage("bomb", bulletSrc("bulletBomb.png"));
+
+    const BATTLE_BG_ASSET_VER = 2;
+    const battleBgImage = new Image();
+    let battleBgReady = false;
+    function syncBattleBgReady() {
+      battleBgReady = battleBgImage.naturalWidth > 0;
+    }
+    battleBgImage.onload = () => {
+      syncBattleBgReady();
+      reportAssetOnce("bg");
+    };
+    battleBgImage.onerror = () => {
+      battleBgReady = false;
+      reportAssetOnce("bg");
+    };
+    setImgCrossOriginIfNeeded(battleBgImage);
+    battleBgImage.src = `${assetUrl("assets/backgrounds/battleBg.png")}?v=${BATTLE_BG_ASSET_VER}`;
+    syncBattleBgReady();
+    if (battleBgImage.complete) {
+      syncBattleBgReady();
+      reportAssetOnce("bg");
+    } else {
+      requestAnimationFrame(() => {
+        syncBattleBgReady();
+        if (battleBgImage.complete) reportAssetOnce("bg");
+      });
+      if (typeof battleBgImage.decode === "function") {
+        battleBgImage.decode().then(() => {
+          syncBattleBgReady();
+          reportAssetOnce("bg");
+        }).catch(() => {
+          reportAssetOnce("bg");
+        });
+      }
+    }
+
+    function drawBulletSpriteIfReady(key, x, y, radius, angle) {
+      const img = bulletImages[key];
+      if (!img || img.__bulletUnavailable) return false;
+      if (!img.complete || img.naturalWidth === 0) return false;
+      const drawable = bulletImageProcessed[key] !== undefined ? bulletImageProcessed[key] : img;
+      const dw = drawable.width || drawable.naturalWidth;
+      const dh = drawable.height || drawable.naturalHeight;
+      if (!dw || !dh) return false;
+      const d = radius * 2;
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(angle);
+      ctx.drawImage(drawable, -d / 2, -d / 2, d, d);
+      ctx.restore();
+      return true;
+    }
+
+    const state = {
+      playerHp: 179,
+      playerMaxHp: 179,
+      round: 1,
+      turn: 1,
+      stageRound: 1,
+      stageTotalMonsters: 0,
+      stageMonstersDefeated: 0,
+      stageWaveCounts: [],
+      stageReinforcementQueue: [],
+      moveStepsForReinforce: 0,
+      reinforceCountThisRound: 0,
+      reinforceBombMobGrantedThisRound: false,
+      kills: 0,
+      ducks: [
+        { name: "雀喵", color: "#7b6cff", skill: "分裂弹", skillType: "splitShot" },
+        { name: "豹喵", color: "#4cc9f0", skill: "炸裂弹", skillType: "bombShot" },
+        { name: "狸花喵", color: "#9be15d", skill: "普通攻击", skillType: "normal" },
+        { name: "阿比喵", color: "#c9a0e8", skill: "连击追弹", skillType: "abiCombo" }
+      ],
+      monsters: [],
+      eggs: [],
+      bombs: [],
+      explosions: [],
+      damageTexts: [],
+      combo: {
+        count: 0,
+        active: false,
+        holding: false,
+        holdTimer: 0,
+        ownerDuckName: "",
+        popTimer: 0
+      },
+      multiKill: {
+        active: false,
+        n: 0,
+        t: 0
+      },
+      /** 一次发射共用一个 id，汇总本发内所有弹道造成的击杀 */
+      volleyNextId: 0,
+      comboVolleyId: 0,
+      volleyStats: {},
+      hudFx: {
+        activeShooterIdx: 0,
+        flashTimer: 0,
+        time: 0
+      },
+      shotsLeft: 0,
+      shooterCursor: 0,
+      fireTimer: 0,
+      firing: false,
+      fireDir: { x: 0, y: 1 },
+      aiming: false,
+      aimPos: { x: W / 2, y: BATTLE_TOP + 120 },
+      gameOver: false,
+      win: false,
+      shakeTime: 0,
+      shakeStrength: 0,
+      btnRect: { x: W / 2 - 120, y: H / 2 + 40, w: 240, h: 70 }
+    };
+
+    function rand(min, max) {
+      return Math.random() * (max - min) + min;
+    }
+
+    function randInt(min, max) {
+      return Math.floor(rand(min, max + 1));
+    }
+
+    function clamp(v, min, max) {
+      return Math.max(min, Math.min(max, v));
+    }
+
+    function randomBounceForceScale() {
+      return rand(BOUNCE_FORCE_RANDOM_MIN, BOUNCE_FORCE_RANDOM_MAX);
+    }
+
+    function randomMonsterBounceScale() {
+      return rand(MONSTER_BOUNCE_RANDOM_MIN, MONSTER_BOUNCE_RANDOM_MAX);
+    }
+
+    function getBounceSpeedGainScale(bounceCount = 0) {
+      const gain = Math.min(BOUNCE_SPEED_GAIN_MAX, Math.max(0, bounceCount) * BOUNCE_SPEED_GAIN_PER_HIT);
+      return 1 + gain;
+    }
+
+    function applyBounceSpeedGrowth(egg) {
+      egg.bounceCount = (egg.bounceCount || 0) + 1;
+      const maxBounceCount = Math.floor(BOUNCE_SPEED_GAIN_MAX / BOUNCE_SPEED_GAIN_PER_HIT);
+      if (egg.bounceCount > maxBounceCount) egg.bounceCount = maxBounceCount;
+    }
+
+    function applyUpwardBounceCap(vx, vy, bounceCount = 0) {
+      if (vy >= 0) return vy;
+      const capFactor = bounceCount <= 0
+        ? FIRST_BOUNCE_UPWARD_SPEED_CAP_FACTOR
+        : NEXT_BOUNCE_UPWARD_SPEED_CAP_FACTOR;
+      // 仅做【上限截断】，不再每次都乘系数，避免反弹次数越多越被持续削弱
+      const totalSpeed = Math.hypot(vx, vy) || Math.abs(vy);
+      const upwardCap = totalSpeed * capFactor;
+      if (-vy > upwardCap) {
+        return -upwardCap;
+      }
+      return vy;
+    }
+
+    function normalize(x, y) {
+      const d = Math.hypot(x, y) || 1;
+      return { x: x / d, y: y / d };
+    }
+
+    function triggerHitShake(strength = HIT_SHAKE_STRENGTH, duration = HIT_SHAKE_DURATION) {
+      state.shakeStrength = Math.min(HIT_SHAKE_MAX, Math.max(state.shakeStrength, strength));
+      state.shakeTime = Math.max(state.shakeTime, duration);
+    }
+
+    function buildRowSpawnCols() {
+      const count = randInt(1, MAX_MONSTERS_PER_ROW);
+      const useDensePattern = count >= 2 && Math.random() < 0.55;
+
+      // 紧密相连: 连续列段（例如 1,2,3）
+      if (useDensePattern) {
+        const start = randInt(0, MONSTER_COLS - count);
+        return Array.from({ length: count }, (_, i) => start + i);
+      }
+
+      // 分散排布: 随机抽列（例如 0,2,5）
+      const cols = Array.from({ length: MONSTER_COLS }, (_, i) => i);
+      for (let i = cols.length - 1; i > 0; i -= 1) {
+        const j = randInt(0, i);
+        const t = cols[i];
+        cols[i] = cols[j];
+        cols[j] = t;
+      }
+      return cols.slice(0, count);
+    }
+
+    function getProgress() {
+      const t = state.stageTotalMonsters > 0 ? state.stageMonstersDefeated / state.stageTotalMonsters : 0;
+      return Math.min(100, Math.floor(t * 100));
+    }
+
+    function addStageMonsterDefeat(n = 1) {
+      if (!state.stageTotalMonsters) return;
+      state.stageMonstersDefeated = Math.min(
+        state.stageTotalMonsters,
+        state.stageMonstersDefeated + n
+      );
+    }
+
+    function planStage() {
+      const waves = [];
+      for (let i = 0; i < ROUNDS_PER_STAGE; i += 1) {
+        waves.push(randInt(MIN_MONSTERS_PER_STAGE, MAX_MONSTERS_PER_STAGE));
+      }
+      const nEvents = ROUNDS_PER_STAGE * STAGE_REINFORCE_PER_ROUND;
+      const queue = [];
+      let reinSum = 0;
+      for (let e = 0; e < nEvents; e += 1) {
+        const colsA = buildRowSpawnCols();
+        const colsB = buildRowSpawnCols();
+        queue.push({ colsA, colsB });
+        reinSum += colsA.length + colsB.length;
+      }
+      state.stageWaveCounts = waves;
+      state.stageReinforcementQueue = queue;
+      state.stageTotalMonsters = waves.reduce((a, b) => a + b, 0) + 1 + reinSum;
+      state.stageMonstersDefeated = 0;
+      state.moveStepsForReinforce = 0;
+      state.reinforceCountThisRound = 0;
+      state.reinforceBombMobGrantedThisRound = false;
+    }
+
+    function buildSpawnSlotsPool() {
+      const spawnSlots = [];
+      for (let rowOffset = 0; rowOffset < MONSTER_SPAWN_ROW_COUNT; rowOffset += 1) {
+        const row = MONSTER_START_ROW + rowOffset;
+        const rowCols = buildRowSpawnCols();
+        for (const col of rowCols) {
+          spawnSlots.push({ col, row });
+        }
+      }
+      for (let i = spawnSlots.length - 1; i > 0; i -= 1) {
+        const j = randInt(0, i);
+        const t = spawnSlots[i];
+        spawnSlots[i] = spawnSlots[j];
+        spawnSlots[j] = t;
+      }
+      return spawnSlots;
+    }
+
+    function spawnWaveForStageRound(stageRound) {
+      state.reinforceCountThisRound = 0;
+      state.reinforceBombMobGrantedThisRound = false;
+      const waveMinionCount = state.stageWaveCounts[stageRound - 1];
+      const spawnSlots = buildSpawnSlotsPool();
+      const list = [];
+      const needBoss = stageRound === ROUNDS_PER_STAGE;
+      const targetSize = needBoss ? 1 + waveMinionCount : waveMinionCount;
+
+      if (needBoss) {
+        list.push(
+          makeMonster(2.5, MONSTER_START_ROW, randInt(MONSTER_HP_BOSS_MIN, MONSTER_HP_BOSS_MAX), "boss")
+        );
+        for (let i = spawnSlots.length - 1; i >= 0; i -= 1) {
+          const slot = spawnSlots[i];
+          if (slot.row === MONSTER_START_ROW && (slot.col === 2 || slot.col === 3)) {
+            spawnSlots.splice(i, 1);
+          }
+        }
+      }
+
+      while (list.length < targetSize && spawnSlots.length > 0) {
+        const slot = spawnSlots.pop();
+        list.push(makeMonster(slot.col, slot.row, randInt(MONSTER_HP_MIN, MONSTER_HP_MAX)));
+      }
+      const nonBossIdx = [];
+      for (let i = 0; i < list.length; i += 1) {
+        if (list[i].type !== "boss") nonBossIdx.push(i);
+      }
+      if (nonBossIdx.length > 0) {
+        const ri = nonBossIdx[randInt(0, nonBossIdx.length - 1)];
+        const replaced = list[ri];
+        list[ri] = makeMonster(replaced.col, replaced.row, 1, "bombMob");
+      }
+      for (const m of list) {
+        m.reinforceSpawnAge = 0;
+      }
+      state.monsters.push(...list);
+    }
+
+    function spawnReinforcementFromQueue() {
+      if (!state.stageReinforcementQueue || state.stageReinforcementQueue.length === 0) return;
+      const ev = state.stageReinforcementQueue.shift();
+      const { colsA, colsB } = ev;
+      const r1 = Math.min(MONSTER_REINFORCE_ROW_GREEN, MONSTER_ROW_MAX);
+      let r2 = Math.min(MONSTER_REINFORCE_ROW_BELOW_GREEN, MONSTER_ROW_MAX);
+      if (r1 > MONSTER_ROW_MAX) return;
+      if (r2 <= r1) r2 = Math.min(r1 + 1, MONSTER_ROW_MAX);
+      const batch = [];
+      for (const col of colsA) {
+        batch.push(makeMonster(col, r1, randInt(MONSTER_HP_MIN, MONSTER_HP_MAX)));
+      }
+      for (const col of colsB) {
+        batch.push(makeMonster(col, r2, randInt(MONSTER_HP_MIN, MONSTER_HP_MAX)));
+      }
+      if (
+        batch.length > 0 &&
+        !state.reinforceBombMobGrantedThisRound &&
+        Math.random() < REINFORCE_BOMB_MOB_CHANCE
+      ) {
+        const ri = randInt(0, batch.length - 1);
+        const b = batch[ri];
+        batch[ri] = makeMonster(b.col, b.row, 1, "bombMob");
+        state.reinforceBombMobGrantedThisRound = true;
+      }
+      for (const mon of batch) {
+        mon.reinforceSpawnAge = 0;
+        state.monsters.push(mon);
+      }
+    }
+
+    function handleMonstersAllCleared() {
+      if (state.stageRound < ROUNDS_PER_STAGE) {
+        state.stageRound += 1;
+        spawnWaveForStageRound(state.stageRound);
+        if (state.ducks.length > 0) {
+          state.shooterCursor = (state.shooterCursor + 1) % state.ducks.length;
+        }
+        startTurn();
+        return;
+      }
+      state.stageMonstersDefeated = state.stageTotalMonsters;
+      nextStage();
+    }
+
+    function shotsPerTurn() {
+      // 新规则：每次仅 1 只猫发射 1 发，结算后怪物前进
+      return 1;
+    }
+
+    function getCurrentShooterDuck() {
+      if (state.ducks.length === 0) return null;
+      const idx = state.shooterCursor % state.ducks.length;
+      return state.ducks[idx];
+    }
+
+    function getDuckAnchor(index) {
+      if (state.ducks.length === 1) {
+        return { x: W / 2, y: DUCK_HUD_Y };
+      }
+      const gap = DUCK_HUD_WIDTH / Math.max(1, state.ducks.length);
+      return {
+        x: DUCK_HUD_LEFT + gap * index + gap / 2,
+        y: DUCK_HUD_Y
+      };
+    }
+
+    function getCurrentShootOrigin() {
+      if (state.ducks.length === 0) return { x: SHOOT_ORIGIN.x, y: SHOOT_ORIGIN.y };
+      const idx = state.shooterCursor % state.ducks.length;
+      return getDuckAnchor(idx);
+    }
+
+    function makeMonster(col, row, hp, type = "normal") {
+      const r =
+        type === "boss"
+          ? MONSTER_RADIUS_BOSS
+          : MONSTER_RADIUS_NORMAL;
+      return {
+        id: crypto.randomUUID(),
+        col,
+        row,
+        x: col * CELL_W + CELL_W * 0.5,
+        y: BATTLE_TOP + row * CELL_H + CELL_H * 0.5,
+        hp,
+        maxHp: hp,
+        radius: r,
+        type,
+        rowMoveAnim: null,
+        rowMoveDisplayScale: 1,
+        hitShakeTime: 0,
+        hitShakePhase: 0
+      };
+    }
+
+    function startTurn() {
+      state.shotsLeft = shotsPerTurn();
+      state.firing = false;
+      state.fireTimer = 0;
+    }
+
+    function resetDucksToInitial() {
+      state.ducks.length = 0;
+      state.ducks.push(
+        { name: "雀喵", color: "#7b6cff", skill: "分裂弹", skillType: "splitShot" },
+        { name: "豹喵", color: "#4cc9f0", skill: "炸裂弹", skillType: "bombShot" },
+        { name: "狸花喵", color: "#9be15d", skill: "普通攻击", skillType: "normal" },
+        { name: "阿比喵", color: "#c9a0e8", skill: "连击追弹", skillType: "abiCombo" }
+      );
+    }
+
+    function resetGameCore(startRound, stageRoundStart = 1) {
+      state.playerHp = state.playerMaxHp;
+      state.round = startRound;
+      state.turn = 1;
+      state.stageRound = stageRoundStart;
+      state.kills = 0;
+      state.monsters.length = 0;
+      state.eggs.length = 0;
+      state.bombs.length = 0;
+      state.explosions.length = 0;
+      state.damageTexts.length = 0;
+      state.combo.count = 0;
+      state.combo.active = false;
+      state.combo.holding = false;
+      state.combo.holdTimer = 0;
+      state.combo.ownerDuckName = "";
+      state.combo.popTimer = 0;
+      state.multiKill.active = false;
+      state.multiKill.n = 0;
+      state.multiKill.t = 0;
+      state.volleyNextId = 0;
+      state.comboVolleyId = 0;
+      state.volleyStats = {};
+      state.hudFx.activeShooterIdx = 0;
+      state.hudFx.flashTimer = 0;
+      state.hudFx.time = 0;
+      state.shooterCursor = 0;
+      state.gameOver = false;
+      state.win = false;
+      state.shakeTime = 0;
+      state.shakeStrength = 0;
+      planStage();
+      startTurn();
+      spawnWaveForStageRound(stageRoundStart);
+    }
+
+    function resetGame() {
+      resetGameCore(1);
+    }
+
+    /**
+     * 调试：从第 2 关第 1 回合开局（仅设置 state.round=2），不锁定关卡。
+     * 本关 3 波全部清空后由 nextStage() 将 round+1，会正常进入第 3 关，之后同理。
+     */
+    function jumpToDebugRound2() {
+      resetDucksToInitial();
+      resetGameCore(2, 1);
+    }
+
+    /** 调试：第 1 关第 3 回合（Boss+小怪），重置为初始 4 猫 */
+    function jumpToDebugBossLevel() {
+      resetDucksToInitial();
+      resetGameCore(1, ROUNDS_PER_STAGE);
+    }
+
+    function resolveEggBulletSpriteKey({ ownerDuckName, damageMin, homingTargetId }) {
+      if (homingTargetId) return "abi";
+      if (damageMin === SPLIT_EGG_HIT_DAMAGE_MIN) return "split";
+      if (ownerDuckName === "雀喵") return "split";
+      if (ownerDuckName === "阿比喵") return "abi";
+      return "normal";
+    }
+
+    function spawnEgg({
+      x, y, vx, vy, ownerDuckName, canSplit, canBomb = false,
+      damageMin = EGG_HIT_DAMAGE_MIN, damageMax = EGG_HIT_DAMAGE_MAX,
+      volleyId
+    }) {
+      const bulletSpriteKey = resolveEggBulletSpriteKey({
+        ownerDuckName,
+        damageMin,
+        homingTargetId: null
+      });
+      state.eggs.push({
+        x,
+        y,
+        vx,
+        vy,
+        radius: EGG_RADIUS,
+        hitMonsterCount: 0,
+        hitCooldown: 0,
+        canSplit,
+        canBomb,
+        bombTriggerCount: 0,
+        hasSplit: false,
+        ownerDuckName,
+        bounceCount: 0,
+        damageMin,
+        damageMax,
+        homingTargetId: null,
+        bulletSpriteKey,
+        volleyId
+      });
+    }
+
+    function spawnSplitEggFrom(parentEgg) {
+      for (const sign of [-1, 1]) {
+        const angle = (SPLIT_BULLET_ANGLE_DEG * sign * Math.PI) / 180;
+        const cos = Math.cos(angle);
+        const sin = Math.sin(angle);
+        const rvx = parentEgg.vx * cos - parentEgg.vy * sin;
+        const rvy = parentEgg.vx * sin + parentEgg.vy * cos;
+        const speedScale = SPLIT_BULLET_SPEED_FACTOR * rand(0.95, 1.05);
+        spawnEgg({
+          x: parentEgg.x,
+          y: parentEgg.y,
+          vx: rvx * speedScale,
+          vy: rvy * speedScale,
+          ownerDuckName: parentEgg.ownerDuckName,
+          canSplit: false,
+          canBomb: false,
+          damageMin: SPLIT_EGG_HIT_DAMAGE_MIN,
+          damageMax: SPLIT_EGG_HIT_DAMAGE_MAX,
+          volleyId: parentEgg.volleyId
+        });
+        const child = state.eggs[state.eggs.length - 1];
+        if (child) {
+          child.bounceCount = parentEgg.bounceCount || 0;
+        }
+        volleyAddProjectile(parentEgg.volleyId);
+      }
+    }
+
+    function spawnBomb({ x, y, ownerDuckName, vx = 0, vy = 0, isFlying = false, volleyId }) {
+      state.bombs.push({
+        x,
+        y,
+        vx,
+        vy,
+        isFlying,
+        armed: !isFlying,
+        radius: BOMB_RADIUS,
+        timer: BOMB_TIMER_SECONDS,
+        age: 0,
+        phase: rand(0, Math.PI * 2),
+        blastRadius: BOMB_BLAST_RADIUS,
+        ownerDuckName,
+        volleyId
+      });
+    }
+
+    function maybeSpawnBombFromEgg(egg) {
+      if (!egg.canBomb) return;
+      const nextTriggerIdx = egg.bombTriggerCount || 0;
+      if (nextTriggerIdx >= BOMB_TRIGGER_HITS.length) return;
+      if (egg.hitMonsterCount >= BOMB_TRIGGER_HITS[nextTriggerIdx]) {
+        spawnBomb({ x: egg.x, y: egg.y, ownerDuckName: egg.ownerDuckName, volleyId: egg.volleyId });
+        volleyAddProjectile(egg.volleyId);
+        egg.bombTriggerCount = nextTriggerIdx + 1;
+      }
+    }
+
+    function spawnDamageText(monster, damage) {
+      const baseFontSize = monster.type === "boss" ? 44 : 36;
+      state.damageTexts.push({
+        x: monster.x,
+        y: monster.y - monster.radius * 0.6,
+        damage,
+        age: 0,
+        duration: DAMAGE_TEXT_DURATION,
+        rise: DAMAGE_TEXT_RISE,
+        fontSize: baseFontSize * DAMAGE_TEXT_FONT_SCALE
+      });
+    }
+
+    function startComboForShot(duckName) {
+      state.combo.count = 0;
+      state.combo.active = true;
+      state.combo.holding = false;
+      state.combo.holdTimer = 0;
+      state.combo.ownerDuckName = duckName || "";
+      state.combo.popTimer = 0;
+    }
+
+    function pickHighestHpMonster() {
+      let best = null;
+      let bestHp = -Infinity;
+      for (const m of state.monsters) {
+        if (m.hp > bestHp) {
+          bestHp = m.hp;
+          best = m;
+        }
+      }
+      return best;
+    }
+
+    function spawnAbiHomingEgg() {
+      const abiIdx = state.ducks.findIndex((d) => d.name === "阿比喵" && d.skillType === "abiCombo");
+      if (abiIdx < 0) return;
+      const target = pickHighestHpMonster();
+      if (!target) return;
+      const anchor = getDuckAnchor(abiIdx);
+      const dx = target.x - anchor.x;
+      const dy = target.y - anchor.y;
+      const dist = Math.hypot(dx, dy) || 1;
+      const s = physics.eggInitialSpeed;
+      state.eggs.push({
+        x: anchor.x,
+        y: anchor.y,
+        vx: (dx / dist) * s,
+        vy: (dy / dist) * s,
+        radius: EGG_RADIUS,
+        hitMonsterCount: 0,
+        hitCooldown: 0,
+        canSplit: false,
+        canBomb: false,
+        bombTriggerCount: 0,
+        hasSplit: false,
+        ownerDuckName: "阿比喵",
+        bounceCount: 0,
+        damageMin: EGG_HIT_DAMAGE_MIN,
+        damageMax: EGG_HIT_DAMAGE_MAX,
+        homingTargetId: target.id,
+        bulletSpriteKey: resolveEggBulletSpriteKey({
+          ownerDuckName: "阿比喵",
+          damageMin: EGG_HIT_DAMAGE_MIN,
+          homingTargetId: target.id
+        }),
+        volleyId: state.comboVolleyId
+      });
+      volleyAddProjectile(state.comboVolleyId);
+    }
+
+    function maybeSpawnAbiHomingEgg() {
+      const c = state.combo.count;
+      if (c <= 0 || c % 3 !== 0) return;
+      if (!state.ducks.some((d) => d.name === "阿比喵" && d.skillType === "abiCombo")) return;
+      if (!state.monsters.length) return;
+      spawnAbiHomingEgg();
+    }
+
+    function addComboHit() {
+      if (!state.combo.active) return;
+      state.combo.count += 1;
+      state.combo.holding = false;
+      state.combo.holdTimer = 0;
+      state.combo.popTimer = COMBO_POP_DURATION;
+      state.hudFx.flashTimer = HUD_FOCUS_FLASH_DURATION;
+      maybeSpawnAbiHomingEgg();
+    }
+
+    function updateCombo(dt) {
+      if (!state.combo.active) return;
+      const hasProjectiles = state.eggs.length > 0 || state.bombs.length > 0;
+      if (hasProjectiles) {
+        state.combo.holding = false;
+        state.combo.holdTimer = 0;
+        state.combo.popTimer = Math.max(0, state.combo.popTimer - dt);
+        return;
+      }
+      if (!state.combo.holding) {
+        state.combo.holding = true;
+        state.combo.holdTimer = COMBO_HOLD_SECONDS_AFTER_CLEAR;
+        return;
+      }
+      state.combo.holdTimer -= dt;
+      state.combo.popTimer = Math.max(0, state.combo.popTimer - dt);
+      if (state.combo.holdTimer <= 0) {
+        state.combo.count = 0;
+        state.combo.active = false;
+        state.combo.holding = false;
+        state.combo.holdTimer = 0;
+        state.combo.ownerDuckName = "";
+        state.combo.popTimer = 0;
+      }
+    }
+
+    function ensureVolleySlot(volleyId) {
+      if (volleyId == null) return null;
+      if (!state.volleyStats[volleyId]) {
+        state.volleyStats[volleyId] = { kills: 0, refs: 0 };
+      }
+      return state.volleyStats[volleyId];
+    }
+
+    function volleyAddProjectile(volleyId) {
+      const s = ensureVolleySlot(volleyId);
+      if (!s) return;
+      s.refs += 1;
+    }
+
+    function volleyAddKills(volleyId, n) {
+      if (n <= 0) return;
+      const s = ensureVolleySlot(volleyId);
+      if (!s) return;
+      s.kills += n;
+    }
+
+    function volleyRemoveProjectile(volleyId) {
+      if (volleyId == null) return;
+      const s = state.volleyStats[volleyId];
+      if (!s) return;
+      s.refs -= 1;
+      if (s.refs <= 0) {
+        const k = s.kills;
+        delete state.volleyStats[volleyId];
+        maybeShowMultiKillBanner(k);
+      }
+    }
+
+    function triggerMultiKillBanner(n) {
+      if (n < 2) return;
+      state.multiKill.active = true;
+      state.multiKill.n = n;
+      state.multiKill.t = 0;
+    }
+
+    function maybeShowMultiKillBanner(totalKills) {
+      triggerMultiKillBanner(totalKills || 0);
+    }
+
+    function sampleMultiKillAnim(t) {
+      const T0 = MULTIKILL_DURATION_IN;
+      const T1 = MULTIKILL_DURATION_HOLD;
+      const T2 = MULTIKILL_DURATION_OUT;
+      const total = T0 + T1 + T2;
+      if (t >= total) return { alpha: 0, scale: 1, dy: 0 };
+      if (t < T0) {
+        const u = clamp(t / T0, 0, 1);
+        const smooth = u * u * (3 - 2 * u);
+        const alpha = smooth;
+        const scale = 0.86 + 0.14 * (1 - Math.pow(1 - u, 3));
+        return { alpha, scale, dy: (1 - smooth) * 12 };
+      }
+      if (t < T0 + T1) {
+        return { alpha: 1, scale: 1, dy: 0 };
+      }
+      const u = clamp((t - T0 - T1) / T2, 0, 1);
+      const outEase = u * u;
+      return { alpha: 1 - outEase, scale: 1 - 0.05 * outEase, dy: -8 * outEase };
+    }
+
+    function updateMultiKill(dt) {
+      if (!state.multiKill.active) return;
+      state.multiKill.t += dt;
+      const total = MULTIKILL_DURATION_IN + MULTIKILL_DURATION_HOLD + MULTIKILL_DURATION_OUT;
+      if (state.multiKill.t >= total) {
+        state.multiKill.active = false;
+        state.multiKill.t = 0;
+      }
+    }
+
+    function updateHudFx(dt) {
+      state.hudFx.time += dt;
+      state.hudFx.flashTimer = Math.max(0, state.hudFx.flashTimer - dt);
+      const shooterIdx = state.ducks.length > 0 ? state.shooterCursor % state.ducks.length : -1;
+      state.hudFx.activeShooterIdx = shooterIdx;
+    }
+
+    /** 与真实弹球一致，用于瞄准引线（无随机炸弹/分裂副作用） */
+    function simulateAimReflectOnMonster(egg, m) {
+      const incomingSpeed = Math.hypot(egg.vx, egg.vy) || 1;
+      const isFollowUpHit = (egg.hitMonsterCount || 0) > 0;
+      const nx = egg.x - m.x;
+      const ny = egg.y - m.y;
+      const nd = Math.hypot(nx, ny) || 1;
+      let ux = nx / nd;
+      let uy = ny / nd;
+      if (Math.abs(ux) + Math.abs(uy) < 0.0001) {
+        const fallbackDir = normalize(egg.vx || 1, egg.vy || 1);
+        ux = fallbackDir.x;
+        uy = fallbackDir.y;
+      }
+      const dot = egg.vx * ux + egg.vy * uy;
+      const bounceScale = MONSTER_BOUNCE_RANDOM_MIN;
+      egg.vx -= 2 * dot * ux;
+      egg.vy -= 2 * dot * uy;
+      egg.vx *= physics.eggMonsterBounceDamp * bounceScale;
+      egg.vy = egg.vy * physics.eggMonsterBounceDamp * bounceScale + physics.eggHitDownBias;
+      if (isFollowUpHit) {
+        egg.vx *= FOLLOWUP_MONSTER_REBOUND_BOOST;
+        egg.vy *= FOLLOWUP_MONSTER_REBOUND_BOOST;
+      }
+
+      const minOutwardSpeed = MONSTER_MIN_OUTWARD_REBOUND_SPEED * bounceScale;
+      const outwardSpeed = egg.vx * ux + egg.vy * uy;
+      if (outwardSpeed < minOutwardSpeed) {
+        const push = minOutwardSpeed - outwardSpeed;
+        egg.vx += ux * push;
+        egg.vy += uy * push;
+      }
+
+      const reboundSpeed = Math.hypot(egg.vx, egg.vy) || 1;
+      const minReboundSpeed = Math.max(
+        MONSTER_MIN_TOTAL_REBOUND_SPEED,
+        MONSTER_MIN_REBOUND_SPEED,
+        incomingSpeed * MONSTER_REBOUND_KEEP_RATIO,
+        isFollowUpHit ? FOLLOWUP_MONSTER_MIN_REBOUND_SPEED : 0
+      );
+      if (reboundSpeed < minReboundSpeed) {
+        const scale = minReboundSpeed / reboundSpeed;
+        egg.vx *= scale;
+        egg.vy *= scale;
+      }
+
+      egg.vy = applyUpwardBounceCap(egg.vx, egg.vy, egg.bounceCount || 0);
+      const minUpwardSpeed = isFollowUpHit
+        ? FOLLOWUP_MONSTER_MIN_UPWARD_REBOUND_SPEED
+        : MONSTER_MIN_UPWARD_REBOUND_SPEED;
+      if (egg.vy > -minUpwardSpeed) {
+        egg.vy = -minUpwardSpeed;
+      }
+
+      const targetDist = egg.radius + m.radius + 1.2;
+      egg.x = m.x + ux * targetDist;
+      egg.y = m.y + uy * targetDist;
+      applyBounceSpeedGrowth(egg);
+      egg.hitMonsterCount = (egg.hitMonsterCount || 0) + 1;
+    }
+
+    function truncateAimPathTailAfterFirstMonster(points, firstHitIdx, fraction) {
+      if (firstHitIdx < 0 || firstHitIdx >= points.length - 1 || fraction >= 0.999) return points;
+      let tailLen = 0;
+      for (let i = firstHitIdx; i < points.length - 1; i += 1) {
+        const dx = points[i + 1].x - points[i].x;
+        const dy = points[i + 1].y - points[i].y;
+        tailLen += Math.hypot(dx, dy);
+      }
+      const maxTail = tailLen * fraction;
+      if (maxTail <= 0.5) return points.slice(0, firstHitIdx + 1);
+      const out = points.slice(0, firstHitIdx + 1);
+      let acc = 0;
+      for (let i = firstHitIdx; i < points.length - 1; i += 1) {
+        const dx = points[i + 1].x - points[i].x;
+        const dy = points[i + 1].y - points[i].y;
+        const segLen = Math.hypot(dx, dy);
+        if (segLen < 1e-6) continue;
+        if (acc + segLen <= maxTail + 1e-4) {
+          out.push(points[i + 1]);
+          acc += segLen;
+        } else {
+          const need = maxTail - acc;
+          const t = Math.max(0, Math.min(1, need / segLen));
+          out.push({
+            x: points[i].x + t * dx,
+            y: points[i].y + t * dy
+          });
+          break;
+        }
+      }
+      return out;
+    }
+
+    function buildAimPath(dir, origin) {
+      const points = [{ x: origin.x, y: origin.y }];
+      let firstMonsterHitPointIndex = -1;
+      const radius = EGG_RADIUS;
+      const aimEgg = {
+        x: origin.x,
+        y: origin.y,
+        vx: dir.x * physics.eggInitialSpeed,
+        vy: dir.y * physics.eggInitialSpeed,
+        radius,
+        bounceCount: 0,
+        hitMonsterCount: 0
+      };
+      const subDt = AIM_PREDICT_DT / AIM_PREDICT_SUB_STEPS;
+
+      for (let i = 0; i < AIM_PREDICT_STEPS; i += 1) {
+        let abortPath = false;
+        for (let s = 0; s < AIM_PREDICT_SUB_STEPS; s += 1) {
+          const dragFactor = Math.exp(-physics.eggAirDrag * subDt);
+          aimEgg.vx *= dragFactor;
+          aimEgg.vy = aimEgg.vy * dragFactor + physics.eggGravity * subDt;
+          const moveScale = EGG_FINAL_SPEED_MULTIPLIER * getBounceSpeedGainScale(aimEgg.bounceCount);
+          aimEgg.x += aimEgg.vx * subDt * moveScale;
+          aimEgg.y += aimEgg.vy * subDt * moveScale;
+
+          if (aimEgg.x <= radius) {
+            aimEgg.x = radius;
+            aimEgg.vx = Math.abs(aimEgg.vx) * physics.eggWallBounceDamp;
+            aimEgg.vy *= 0.985;
+            aimEgg.vy = applyUpwardBounceCap(aimEgg.vx, aimEgg.vy, aimEgg.bounceCount);
+            aimEgg.bounceCount += 1;
+          } else if (aimEgg.x >= W - radius) {
+            aimEgg.x = W - radius;
+            aimEgg.vx = -Math.abs(aimEgg.vx) * physics.eggWallBounceDamp;
+            aimEgg.vy *= 0.985;
+            aimEgg.vy = applyUpwardBounceCap(aimEgg.vx, aimEgg.vy, aimEgg.bounceCount);
+            aimEgg.bounceCount += 1;
+          }
+
+          if (aimEgg.y <= BATTLE_TOP + radius && aimEgg.vy < 0) {
+            aimEgg.y = BATTLE_TOP + radius;
+            aimEgg.vy = Math.abs(aimEgg.vy) * physics.eggTopBounceDamp;
+            aimEgg.bounceCount += 1;
+          }
+
+          let resolvePass = 0;
+          while (resolvePass < 4) {
+            let hitAny = false;
+            for (const m of state.monsters) {
+              const dx = aimEgg.x - m.x;
+              const dy = aimEgg.y - m.y;
+              const rr = radius + m.radius;
+              if (dx * dx + dy * dy <= rr * rr) {
+                if (m.type === "bombMob") {
+                  const nd = Math.hypot(dx, dy) || 1;
+                  const ux = dx / nd;
+                  const uy = dy / nd;
+                  const targetDist = radius + m.radius + 1.2;
+                  aimEgg.x = m.x + ux * targetDist;
+                  aimEgg.y = m.y + uy * targetDist;
+                  points.push({ x: aimEgg.x, y: aimEgg.y });
+                  if (firstMonsterHitPointIndex < 0) {
+                    firstMonsterHitPointIndex = points.length - 1;
+                  }
+                  abortPath = true;
+                  hitAny = true;
+                  break;
+                }
+                simulateAimReflectOnMonster(aimEgg, m);
+                points.push({ x: aimEgg.x, y: aimEgg.y });
+                if (firstMonsterHitPointIndex < 0) {
+                  firstMonsterHitPointIndex = points.length - 1;
+                }
+                hitAny = true;
+                break;
+              }
+            }
+            if (abortPath) break;
+            if (!hitAny) break;
+            resolvePass += 1;
+          }
+          if (abortPath) break;
+        }
+        if (abortPath) break;
+
+        if (aimEgg.y >= BATTLE_BOTTOM - radius) {
+          points.push({ x: aimEgg.x, y: aimEgg.y });
+          break;
+        }
+        if (i % 2 === 0) {
+          points.push({ x: aimEgg.x, y: aimEgg.y });
+        }
+      }
+
+      const tail = { x: aimEgg.x, y: aimEgg.y };
+      const lastPt = points[points.length - 1];
+      if (lastPt && (Math.hypot(tail.x - lastPt.x, tail.y - lastPt.y) > 4)) {
+        points.push(tail);
+      }
+
+      return truncateAimPathTailAfterFirstMonster(
+        points,
+        firstMonsterHitPointIndex,
+        AIM_PATH_TAIL_AFTER_FIRST_HIT
+      );
+    }
+
+    function fireEgg(dir) {
+      const shooterDuck = getCurrentShooterDuck();
+      if (!shooterDuck || state.shotsLeft <= 0) return;
+      startComboForShot(shooterDuck.name);
+      const volleyId = (state.volleyNextId += 1);
+      state.comboVolleyId = volleyId;
+      const origin = getCurrentShootOrigin();
+      if (shooterDuck.skillType === "bombShot") {
+        spawnBomb({
+          x: origin.x,
+          y: origin.y,
+          vx: dir.x * physics.eggInitialSpeed,
+          vy: dir.y * physics.eggInitialSpeed,
+          ownerDuckName: shooterDuck.name,
+          isFlying: true,
+          volleyId
+        });
+        volleyAddProjectile(volleyId);
+        state.shotsLeft -= 1;
+        return;
+      }
+      spawnEgg({
+        x: origin.x,
+        y: origin.y,
+        vx: dir.x * physics.eggInitialSpeed,
+        vy: dir.y * physics.eggInitialSpeed,
+        ownerDuckName: shooterDuck.name,
+        canSplit: shooterDuck.skillType === "splitShot",
+        canBomb: shooterDuck.skillType === "bombShot",
+        volleyId
+      });
+      volleyAddProjectile(volleyId);
+      state.shotsLeft -= 1;
+    }
+
+    function reflectBallOnMonster(egg, m) {
+      const incomingSpeed = Math.hypot(egg.vx, egg.vy) || 1;
+      const isFollowUpHit = (egg.hitMonsterCount || 0) > 0;
+      const nx = egg.x - m.x;
+      const ny = egg.y - m.y;
+      const nd = Math.hypot(nx, ny) || 1;
+      let ux = nx / nd;
+      let uy = ny / nd;
+      if (Math.abs(ux) + Math.abs(uy) < 0.0001) {
+        const fallbackDir = normalize(egg.vx || 1, egg.vy || 1);
+        ux = fallbackDir.x;
+        uy = fallbackDir.y;
+      }
+      const dot = egg.vx * ux + egg.vy * uy;
+      const bounceScale = randomMonsterBounceScale();
+      egg.vx -= 2 * dot * ux;
+      egg.vy -= 2 * dot * uy;
+      egg.vx *= physics.eggMonsterBounceDamp * bounceScale;
+      egg.vy = egg.vy * physics.eggMonsterBounceDamp * bounceScale + physics.eggHitDownBias;
+      if (isFollowUpHit) {
+        egg.vx *= FOLLOWUP_MONSTER_REBOUND_BOOST;
+        egg.vy *= FOLLOWUP_MONSTER_REBOUND_BOOST;
+      }
+
+      // 避免贴着怪物表面【滚动】不弹开：保证最小外向反弹速度
+      const minOutwardSpeed = MONSTER_MIN_OUTWARD_REBOUND_SPEED * bounceScale;
+      const outwardSpeed = egg.vx * ux + egg.vy * uy;
+      if (outwardSpeed < minOutwardSpeed) {
+        const push = minOutwardSpeed - outwardSpeed;
+        egg.vx += ux * push;
+        egg.vy += uy * push;
+      }
+
+      const reboundSpeed = Math.hypot(egg.vx, egg.vy) || 1;
+      const minReboundSpeed = Math.max(
+        MONSTER_MIN_TOTAL_REBOUND_SPEED,
+        MONSTER_MIN_REBOUND_SPEED,
+        incomingSpeed * MONSTER_REBOUND_KEEP_RATIO,
+        isFollowUpHit ? FOLLOWUP_MONSTER_MIN_REBOUND_SPEED : 0
+      );
+      if (reboundSpeed < minReboundSpeed) {
+        const scale = minReboundSpeed / reboundSpeed;
+        egg.vx *= scale;
+        egg.vy *= scale;
+      }
+
+      egg.vy = applyUpwardBounceCap(egg.vx, egg.vy, egg.bounceCount || 0);
+      // 怪物碰撞专用底线：避免几乎不回弹而贴着怪物下滑
+      const minUpwardSpeed = isFollowUpHit
+        ? FOLLOWUP_MONSTER_MIN_UPWARD_REBOUND_SPEED
+        : MONSTER_MIN_UPWARD_REBOUND_SPEED;
+      if (egg.vy > -minUpwardSpeed) {
+        egg.vy = -minUpwardSpeed;
+      }
+
+      const targetDist = egg.radius + m.radius + 1.2;
+      egg.x = m.x + ux * targetDist;
+      egg.y = m.y + uy * targetDist;
+      applyBounceSpeedGrowth(egg);
+      egg.hitMonsterCount = (egg.hitMonsterCount || 0) + 1;
+      egg.hitCooldown = MONSTER_HIT_COOLDOWN;
+      maybeSpawnBombFromEgg(egg);
+
+      if (egg.canSplit && !egg.hasSplit && egg.hitMonsterCount >= SPLIT_TRIGGER_HITS) {
+        egg.hasSplit = true;
+        spawnSplitEggFrom(egg);
+      }
+    }
+
+    function updateEggs(dt) {
+      const alive = [];
+
+      for (const egg of state.eggs) {
+        let removed = false;
+
+        if (egg.homingTargetId) {
+          egg.hitCooldown = Math.max(0, (egg.hitCooldown || 0) - dt);
+          let target = state.monsters.find((m) => m.id === egg.homingTargetId && m.hp > 0);
+          if (!target) {
+            target = pickHighestHpMonster();
+            if (target) egg.homingTargetId = target.id;
+            else removed = true;
+          }
+          if (!removed && target) {
+            const tdx = target.x - egg.x;
+            const tdy = target.y - egg.y;
+            const tdist = Math.hypot(tdx, tdy) || 1;
+            const sp = physics.eggInitialSpeed;
+            egg.vx = (tdx / tdist) * sp;
+            egg.vy = (tdy / tdist) * sp;
+            const moveScale = EGG_FINAL_SPEED_MULTIPLIER * getBounceSpeedGainScale(egg.bounceCount || 0);
+            egg.x += egg.vx * dt * moveScale;
+            egg.y += egg.vy * dt * moveScale;
+            egg.x = clamp(egg.x, egg.radius, W - egg.radius);
+            egg.y = clamp(egg.y, BATTLE_TOP + egg.radius, H);
+
+            if (egg.hitCooldown <= 0) {
+              for (const m of state.monsters) {
+                const dx = egg.x - m.x;
+                const dy = egg.y - m.y;
+                const r = egg.radius + m.radius;
+                if (dx * dx + dy * dy <= r * r) {
+                  if (m.type === "bombMob") {
+                    triggerHitShake();
+                    addComboHit();
+                    applyBombExplosionDamageAt(m.x, m.y, egg);
+                    removed = true;
+                    break;
+                  }
+                  triggerHitShake();
+                  const damage = randInt(egg.damageMin, egg.damageMax);
+                  m.hp -= damage;
+                  applyMonsterHitShake(m);
+                  spawnDamageText(m, damage);
+                  addComboHit();
+                  if (m.hp <= 0) {
+                    state.kills += 1;
+                    volleyAddKills(egg.volleyId, 1);
+                    addStageMonsterDefeat(1);
+                  }
+                  removed = true;
+                  break;
+                }
+              }
+            }
+          }
+
+          state.monsters = state.monsters.filter((m) => m.hp > 0);
+
+          if (removed) volleyRemoveProjectile(egg.volleyId);
+          if (!removed) alive.push(egg);
+          continue;
+        }
+
+        const dragFactor = Math.exp(-physics.eggAirDrag * dt);
+        egg.vx *= dragFactor;
+        egg.vy = egg.vy * dragFactor + physics.eggGravity * dt;
+        egg.hitCooldown = Math.max(0, (egg.hitCooldown || 0) - dt);
+        const moveScale = EGG_FINAL_SPEED_MULTIPLIER * getBounceSpeedGainScale(egg.bounceCount || 0);
+
+        egg.x += egg.vx * dt * moveScale;
+        egg.y += egg.vy * dt * moveScale;
+
+        if (egg.x <= egg.radius) {
+          const bounceScale = randomBounceForceScale();
+          egg.x = egg.radius;
+          egg.vx = Math.abs(egg.vx) * physics.eggWallBounceDamp * bounceScale;
+          egg.vy *= 0.985;
+          egg.vy = applyUpwardBounceCap(egg.vx, egg.vy, egg.bounceCount || 0);
+          applyBounceSpeedGrowth(egg);
+        } else if (egg.x >= W - egg.radius) {
+          const bounceScale = randomBounceForceScale();
+          egg.x = W - egg.radius;
+          egg.vx = -Math.abs(egg.vx) * physics.eggWallBounceDamp * bounceScale;
+          egg.vy *= 0.985;
+          egg.vy = applyUpwardBounceCap(egg.vx, egg.vy, egg.bounceCount || 0);
+          applyBounceSpeedGrowth(egg);
+        }
+
+        if (egg.y <= BATTLE_TOP + egg.radius && egg.vy < 0) {
+          const bounceScale = randomBounceForceScale();
+          egg.y = BATTLE_TOP + egg.radius;
+          egg.vy = Math.abs(egg.vy) * physics.eggTopBounceDamp * bounceScale;
+          applyBounceSpeedGrowth(egg);
+        }
+
+        removed = false;
+
+        if (egg.hitCooldown <= 0) {
+          for (const m of state.monsters) {
+            const dx = egg.x - m.x;
+            const dy = egg.y - m.y;
+            const r = egg.radius + m.radius;
+            if (dx * dx + dy * dy <= r * r) {
+              if (m.type === "bombMob") {
+                triggerHitShake();
+                addComboHit();
+                applyBombExplosionDamageAt(m.x, m.y, egg);
+                removed = true;
+                break;
+              }
+              reflectBallOnMonster(egg, m);
+              triggerHitShake();
+              const damage = randInt(egg.damageMin, egg.damageMax);
+              m.hp -= damage;
+              applyMonsterHitShake(m);
+              spawnDamageText(m, damage);
+              addComboHit();
+              if (m.hp <= 0) {
+                state.kills += 1;
+                volleyAddKills(egg.volleyId, 1);
+                addStageMonsterDefeat(1);
+              }
+              // 一帧只处理一次怪物碰撞，避免连撞导致力度异常
+              break;
+            }
+          }
+        }
+
+        state.monsters = state.monsters.filter((m) => m.hp > 0);
+
+        const speedNow = Math.hypot(egg.vx, egg.vy);
+        if (egg.y >= BATTLE_BOTTOM + egg.radius || (egg.y >= BATTLE_BOTTOM - 28 && speedNow < 120)) {
+          removed = true;
+        }
+
+        if (removed) volleyRemoveProjectile(egg.volleyId);
+        if (!removed) alive.push(egg);
+      }
+
+      state.eggs = alive;
+    }
+
+    /** 与豹喵炸弹引爆相同：震动、爆炸特效、范围伤害与击败统计 */
+    function applyBombExplosionDamageAt(mx, my, killRecord) {
+      triggerHitShake(7, 0.08);
+      state.explosions.push({
+        x: mx,
+        y: my,
+        radius: BOMB_BLAST_RADIUS,
+        time: 0,
+        duration: BOMB_EXPLOSION_DURATION
+      });
+      let explosionKills = 0;
+      for (const m of state.monsters) {
+        const dx = mx - m.x;
+        const dy = my - m.y;
+        const rr = BOMB_BLAST_RADIUS + m.radius;
+        if (dx * dx + dy * dy <= rr * rr) {
+          const damage = randInt(BOMB_HIT_DAMAGE_MIN, BOMB_HIT_DAMAGE_MAX);
+          m.hp -= damage;
+          applyMonsterHitShake(m);
+          spawnDamageText(m, damage);
+          if (m.hp <= 0) {
+            state.kills += 1;
+            explosionKills += 1;
+            addStageMonsterDefeat(1);
+          }
+        }
+      }
+      if (killRecord && killRecord.volleyId != null) {
+        volleyAddKills(killRecord.volleyId, explosionKills);
+      }
+      state.monsters = state.monsters.filter((mm) => mm.hp > 0);
+    }
+
+    function updateBombs(dt) {
+      const remain = [];
+      for (const b of state.bombs) {
+        b.age += dt;
+        if (b.isFlying) {
+          const dragFactor = Math.exp(-physics.eggAirDrag * dt);
+          b.vx *= dragFactor;
+          b.vy = b.vy * dragFactor + physics.eggGravity * dt;
+          b.x += b.vx * dt * EGG_FINAL_SPEED_MULTIPLIER;
+          b.y += b.vy * dt * EGG_FINAL_SPEED_MULTIPLIER;
+
+          if (b.x <= b.radius) {
+            const bounceScale = randomBounceForceScale();
+            b.x = b.radius;
+            b.vx = Math.abs(b.vx) * physics.eggWallBounceDamp * bounceScale;
+            b.vy *= 0.985;
+          } else if (b.x >= W - b.radius) {
+            const bounceScale = randomBounceForceScale();
+            b.x = W - b.radius;
+            b.vx = -Math.abs(b.vx) * physics.eggWallBounceDamp * bounceScale;
+            b.vy *= 0.985;
+          }
+
+          if (b.y <= BATTLE_TOP + b.radius && b.vy < 0) {
+            const bounceScale = randomBounceForceScale();
+            b.y = BATTLE_TOP + b.radius;
+            b.vy = Math.abs(b.vy) * physics.eggTopBounceDamp * bounceScale;
+          }
+
+          let stuck = false;
+          for (const m of state.monsters) {
+            const dx = b.x - m.x;
+            const dy = b.y - m.y;
+            const rr = b.radius + m.radius;
+            if (dx * dx + dy * dy <= rr * rr) {
+              const nd = Math.hypot(dx, dy) || 1;
+              const ux = dx / nd;
+              const uy = dy / nd;
+              b.isFlying = false;
+              b.armed = true;
+              b.timer = BOMB_TIMER_SECONDS;
+              // 吸附到怪物边缘，避免视觉上漂在怪物外侧
+              b.x = m.x + ux * (m.radius + b.radius - 2);
+              b.y = m.y + uy * (m.radius + b.radius - 2);
+              b.vx = 0;
+              b.vy = 0;
+              addComboHit();
+              stuck = true;
+              break;
+            }
+          }
+
+          if (!stuck && b.y > BATTLE_BOTTOM + b.radius) {
+            volleyRemoveProjectile(b.volleyId);
+            continue;
+          }
+          if (b.isFlying) {
+            remain.push(b);
+            continue;
+          }
+        }
+
+        if (!b.armed) {
+          remain.push(b);
+          continue;
+        }
+
+        b.timer -= dt;
+        if (b.timer > 0) {
+          remain.push(b);
+          continue;
+        }
+        applyBombExplosionDamageAt(b.x, b.y, b);
+        volleyRemoveProjectile(b.volleyId);
+      }
+      state.bombs = remain;
+    }
+
+    function updateExplosions(dt) {
+      const active = [];
+      for (const e of state.explosions) {
+        e.time += dt;
+        if (e.time < e.duration) active.push(e);
+      }
+      state.explosions = active;
+    }
+
+    function updateDamageTexts(dt) {
+      const alive = [];
+      for (const t of state.damageTexts) {
+        t.age += dt;
+        if (t.age < t.duration) alive.push(t);
+      }
+      state.damageTexts = alive;
+    }
+
+    function applyMonsterHitShake(m) {
+      m.hitShakeTime = MONSTER_HIT_SHAKE_DURATION;
+      m.hitShakePhase = rand(0, Math.PI * 2);
+    }
+
+    function updateMonsterHitShake(dt) {
+      for (const m of state.monsters) {
+        if (m.hitShakeTime > 0) {
+          m.hitShakeTime = Math.max(0, m.hitShakeTime - dt);
+        }
+      }
+    }
+
+    function getMonsterHitShakeOffset(m) {
+      const rem = m.hitShakeTime || 0;
+      if (rem <= 0) return { x: 0, y: 0 };
+      const elapsed = MONSTER_HIT_SHAKE_DURATION - rem;
+      const decay = rem / MONSTER_HIT_SHAKE_DURATION;
+      const ph = m.hitShakePhase || 0;
+      const amp = MONSTER_HIT_SHAKE_PX * decay;
+      return {
+        x: Math.sin(elapsed * 50 + ph) * amp,
+        y: Math.cos(elapsed * 43 + ph * 1.15) * amp * 0.55
+      };
+    }
+
+    function getMonsterHitScale(m) {
+      const rem = m.hitShakeTime || 0;
+      if (rem <= 0) return 1;
+      const elapsed = MONSTER_HIT_SHAKE_DURATION - rem;
+      const t = elapsed / MONSTER_HIT_SHAKE_DURATION;
+      return 1 + MONSTER_HIT_SCALE_PULSE * Math.sin(Math.PI * t);
+    }
+
+    function getReinforceSpawnPresent(m) {
+      if (m.reinforceSpawnAge == null) {
+        return { scale: 1, alpha: 1, dy: 0 };
+      }
+      const age = Math.min(m.reinforceSpawnAge, REINFORCE_SPAWN_DURATION);
+      const t = age / REINFORCE_SPAWN_DURATION;
+      const e = 1 - (1 - t) ** 3;
+      return {
+        scale: 0.5 + 0.5 * e,
+        alpha: Math.max(0.08, 0.18 + 0.82 * e),
+        dy: (1 - e) * REINFORCE_SPAWN_SLIDE_PX
+      };
+    }
+
+    function updateMonsterReinforceSpawn(dt) {
+      for (const m of state.monsters) {
+        if (m.reinforceSpawnAge == null) continue;
+        m.reinforceSpawnAge += dt;
+        if (m.reinforceSpawnAge >= REINFORCE_SPAWN_DURATION) {
+          m.reinforceSpawnAge = null;
+        }
+      }
+    }
+
+    function getMonsterHitFlashAlpha(m) {
+      const rem = m.hitShakeTime || 0;
+      if (rem <= 0) return 0;
+      const fade = rem / MONSTER_HIT_SHAKE_DURATION;
+      return MONSTER_HIT_FLASH_ALPHA_MAX * fade ** 0.38;
+    }
+
+    function updateMonsterRowMove(dt) {
+      const scaleAmp = MONSTER_ROW_MOVE_SCALE_PEAK - 1;
+      for (const m of state.monsters) {
+        if (!m.rowMoveAnim) continue;
+        const a = m.rowMoveAnim;
+        a.t += dt / a.duration;
+        const t = Math.min(1, a.t);
+        const tEase = 1 - (1 - t) ** 3;
+        const base = a.fromY + (a.toY - a.fromY) * tEase;
+        const jump = Math.sin(Math.PI * t) * -MONSTER_ROW_JUMP_PX;
+        m.y = base + jump;
+        m.rowMoveDisplayScale = 1 + scaleAmp * Math.sin(Math.PI * t);
+        if (t >= 1) {
+          m.y = a.toY;
+          m.rowMoveAnim = null;
+          m.rowMoveDisplayScale = 1;
+        }
+      }
+    }
+
+    function moveMonstersForward() {
+      let lineHits = 0;
+      for (const m of state.monsters) {
+        const fromY = m.y;
+        m.row -= 1;
+        const toY = BATTLE_TOP + m.row * CELL_H + CELL_H * 0.5;
+        if (toY - m.radius <= PLAYER_LINE_Y) {
+          lineHits += m.type === "boss" ? 3 : 1;
+          addStageMonsterDefeat(1);
+          m.hp = 0;
+        }
+        if (m.hp <= 0) {
+          m.y = toY;
+          m.rowMoveAnim = null;
+          m.rowMoveDisplayScale = 1;
+        } else {
+          m.rowMoveAnim = {
+            t: 0,
+            duration: MONSTER_ROW_MOVE_DURATION,
+            fromY,
+            toY
+          };
+          m.rowMoveDisplayScale = 1;
+        }
+      }
+      state.monsters = state.monsters.filter((m) => m.hp > 0);
+      state.playerHp = clamp(state.playerHp - lineHits * 12, 0, state.playerMaxHp);
+
+      state.moveStepsForReinforce = (state.moveStepsForReinforce || 0) + 1;
+      if (state.moveStepsForReinforce >= STAGE_REINFORCE_MOVE_STEPS) {
+        state.moveStepsForReinforce = 0;
+        if ((state.reinforceCountThisRound || 0) < STAGE_REINFORCE_PER_ROUND) {
+          spawnReinforcementFromQueue();
+          state.reinforceCountThisRound = (state.reinforceCountThisRound || 0) + 1;
+        }
+      }
+    }
+
+    /** 当前大关 3 波全部清空后调用：进入下一大关（round+1），与是否从调试「第2关」开局无关 */
+    function nextStage() {
+      if (state.round >= MAX_ROUND) {
+        state.gameOver = true;
+        state.win = true;
+        return;
+      }
+
+      state.round += 1;
+      state.turn = 1;
+      state.stageRound = 1;
+
+      if (state.round === 6) {
+        state.ducks.push({ name: "义炸鸭", color: "#ff9f1c", skill: "普通攻击", skillType: "normal" });
+      }
+      if (state.round === 11) {
+        state.ducks.push({ name: "重装鸭", color: "#ffe66d", skill: "普通攻击", skillType: "normal" });
+      }
+
+      state.bombs.length = 0;
+      state.explosions.length = 0;
+      state.damageTexts.length = 0;
+      planStage();
+      spawnWaveForStageRound(1);
+      if (state.ducks.length > 0) {
+        state.shooterCursor = (state.shooterCursor + 1) % state.ducks.length;
+      }
+      startTurn();
+    }
+
+    function resolveTurn() {
+      if (state.gameOver || state.win) return;
+
+      if (state.monsters.length === 0) {
+        handleMonstersAllCleared();
+        return;
+      }
+
+      state.turn += 1;
+      moveMonstersForward();
+
+      if (state.playerHp <= 0) {
+        state.gameOver = true;
+        state.win = false;
+        return;
+      }
+
+      if (state.monsters.length === 0) {
+        handleMonstersAllCleared();
+        return;
+      }
+
+      if (state.ducks.length > 0) {
+        state.shooterCursor = (state.shooterCursor + 1) % state.ducks.length;
+      }
+      startTurn();
+    }
+
+    function update(dt) {
+      updateMultiKill(dt);
+      if (state.gameOver) return;
+
+      updateMonsterRowMove(dt);
+      updateMonsterReinforceSpawn(dt);
+      updateMonsterHitShake(dt);
+
+      if (state.shakeTime > 0) {
+        state.shakeTime = Math.max(0, state.shakeTime - dt);
+        const decay = state.shakeTime / HIT_SHAKE_DURATION;
+        state.shakeStrength = HIT_SHAKE_STRENGTH * decay;
+      } else {
+        state.shakeStrength = 0;
+      }
+
+      updateEggs(dt);
+      updateBombs(dt);
+      updateExplosions(dt);
+      updateDamageTexts(dt);
+      updateCombo(dt);
+      updateHudFx(dt);
+
+      if (state.shotsLeft <= 0 && state.eggs.length === 0 && state.bombs.length === 0) {
+        resolveTurn();
+      }
+    }
+
+    function roundedRectPath(x, y, w, h, r) {
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.arcTo(x + w, y, x + w, y + h, r);
+      ctx.arcTo(x + w, y + h, x, y + h, r);
+      ctx.arcTo(x, y + h, x, y, r);
+      ctx.arcTo(x, y, x + w, y, r);
+      ctx.closePath();
+    }
+
+    function wrapHintTextLines(text, maxW, font) {
+      const lines = [];
+      ctx.save();
+      ctx.font = font;
+      let line = "";
+      for (const ch of text) {
+        const test = line + ch;
+        if (ctx.measureText(test).width > maxW && line) {
+          lines.push(line);
+          line = ch;
+        } else {
+          line = test;
+        }
+      }
+      if (line) lines.push(line);
+      ctx.restore();
+      return lines.length > 0 ? lines : [text];
+    }
+
+    function getTurnSkillHintLine(duck) {
+      if (!duck) return "";
+      const raw = DUCK_TOOLTIP_TEXT[duck.name];
+      if (!raw) return "";
+      const m = raw.match(/技能效果：([^\n]+)/);
+      const effect = m ? m[1].trim() : "";
+      if (!effect) return "";
+      return `${duck.name}：${effect}`;
+    }
+
+    function drawTurnSkillHint() {
+      if (state.gameOver || state.win) return;
+      const duck = getCurrentShooterDuck();
+      const fullText = getTurnSkillHintLine(duck);
+      if (!fullText) return;
+      const font = `600 ${TURN_HINT_FONT_PX}px Microsoft YaHei`;
+      const maxW = W - 48;
+      const lines = wrapHintTextLines(fullText, maxW, font);
+      const clamped = lines.slice(0, 3);
+      const cx = W / 2;
+      const lineH = TURN_HINT_LINE_H;
+      const firstY = HP_BAR_BOTTOM + 10 + lineH / 2;
+      ctx.save();
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.font = font;
+      ctx.lineJoin = "round";
+      clamped.forEach((ln, i) => {
+        const y = firstY + i * lineH;
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = "rgba(0,0,0,0.52)";
+        ctx.strokeText(ln, cx, y);
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = "rgba(32,48,72,0.4)";
+        ctx.strokeText(ln, cx, y);
+        ctx.fillStyle = "rgba(232, 246, 255, 0.96)";
+        ctx.fillText(ln, cx, y);
+      });
+      ctx.restore();
+    }
+
+    function drawRoundedRect(x, y, w, h, r, fill, stroke) {
+      roundedRectPath(x, y, w, h, r);
+      if (fill) {
+        ctx.fillStyle = fill;
+        ctx.fill();
+      }
+      if (stroke) {
+        ctx.strokeStyle = stroke;
+        ctx.stroke();
+      }
+    }
+
+    function drawHud() {
+      const p = getProgress();
+      const stageTerrain = state.round === 1 ? "草原" : "沙漠";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "alphabetic";
+      ctx.font = `bold ${HUD_TITLE_FONT_PX}px Microsoft YaHei`;
+      ctx.lineWidth = 5;
+      ctx.lineJoin = "round";
+      ctx.strokeStyle = "rgba(55,35,8,0.88)";
+      ctx.strokeText(`第 ${state.round} 关  ${stageTerrain} (${p}%)`, W / 2, 70);
+      ctx.fillStyle = HUD_THEME.roundText;
+      ctx.fillText(`第 ${state.round} 关  ${stageTerrain} (${p}%)`, W / 2, 70);
+
+      drawRoundedRect(120, HUD_PROGRESS_BAR_Y, 480, HUD_PROGRESS_BAR_H, 12, HUD_THEME.progressTrack, HUD_THEME.progressStroke);
+      drawRoundedRect(124, 94, 472 * (p / 100), 16, 8, HUD_THEME.progressFill, null);
+      ctx.font = `bold ${HUD_ROUND_FONT_PX}px Microsoft YaHei`;
+      ctx.textBaseline = "middle";
+      ctx.fillStyle = HUD_THEME.roundText;
+      ctx.lineWidth = 2.5;
+      ctx.lineJoin = "round";
+      ctx.strokeStyle = "rgba(55,35,8,0.88)";
+      ctx.strokeText(`回合 ${state.stageRound}/${ROUNDS_PER_STAGE}`, W / 2, HUD_PROGRESS_TEXT_Y);
+      ctx.fillText(`回合 ${state.stageRound}/${ROUNDS_PER_STAGE}`, W / 2, HUD_PROGRESS_TEXT_Y);
+      ctx.textBaseline = "alphabetic";
+
+      const shooterIdx = state.ducks.length > 0 ? state.shooterCursor % state.ducks.length : -1;
+      const hasProjectiles = state.eggs.length > 0 || state.bombs.length > 0;
+      const cardW = 178;
+      const cardH = 164;
+      const NAME_COL_W = 24;
+      const DUCK_AVATAR_SCALE_BOOST = 1.72;
+      state.ducks.forEach((d, i) => {
+        const anchor = getDuckAnchor(i);
+        const cx = anchor.x;
+        const isActive = i === shooterIdx && (state.shotsLeft > 0 || hasProjectiles);
+        const floatY = isActive
+          ? Math.sin(state.hudFx.time * HUD_FOCUS_FLOAT_SPEED + i * 0.95) * HUD_FOCUS_FLOAT_AMPLITUDE
+          : 0;
+        const flashRatio = isActive && HUD_FOCUS_FLASH_DURATION > 0
+          ? clamp(state.hudFx.flashTimer / HUD_FOCUS_FLASH_DURATION, 0, 1)
+          : 0;
+        const skillBadge = SKILL_BADGE_THEME[d.skillType] || SKILL_BADGE_THEME.normal;
+        const avatarImg = duckAvatarProcessed[d.name] || duckAvatarImages[d.name];
+        const canDrawAvatar = avatarImg
+          && ((avatarImg.naturalWidth && avatarImg.naturalWidth > 0) || (avatarImg.width && avatarImg.width > 0));
+        const avatarLeft = -cardW / 2 + NAME_COL_W + 1;
+        const avatarRight = cardW / 2 - 8;
+        const avatarTop = -cardH / 2 + 6;
+        const avatarBottom = cardH / 2 - 28;
+        const avatarBoxW = avatarRight - avatarLeft;
+        const avatarMaxH = avatarBottom - avatarTop;
+        const avatarBoxCenterX = (avatarLeft + avatarRight) / 2;
+        const avatarBoxCenterY = (avatarTop + avatarBottom) / 2;
+        const nameColCenterX = -cardW / 2 + NAME_COL_W / 2 + 16;
+        const nameCharStep = 24;
+
+        ctx.save();
+        ctx.translate(cx, anchor.y);
+        ctx.globalAlpha = isActive ? 1 : 0.78;
+
+        ctx.save();
+        roundedRectPath(avatarLeft, avatarTop, avatarBoxW, avatarMaxH, 16);
+        ctx.clip();
+
+        ctx.save();
+        ctx.translate(0, floatY);
+
+        if (canDrawAvatar) {
+          const iw = avatarImg.naturalWidth || avatarImg.width;
+          const ih = avatarImg.naturalHeight || avatarImg.height;
+          let scale = Math.min(avatarBoxW / iw, avatarMaxH / ih) * DUCK_AVATAR_SCALE_BOOST;
+          let drawW = iw * scale;
+          let drawH = ih * scale;
+          if (drawH > avatarMaxH) {
+            const f = avatarMaxH / drawH;
+            drawW *= f;
+            drawH *= f;
+          }
+          if (drawW > avatarBoxW) {
+            const f = avatarBoxW / drawW;
+            drawW *= f;
+            drawH *= f;
+          }
+          ctx.drawImage(
+            avatarImg,
+            avatarBoxCenterX - drawW / 2,
+            avatarBoxCenterY - drawH / 2,
+            drawW,
+            drawH
+          );
+        } else {
+          const rx = Math.min(avatarBoxW * 0.48, 82);
+          const ry = Math.min(avatarMaxH * 0.48, 72);
+          ctx.beginPath();
+          ctx.fillStyle = d.color;
+          ctx.ellipse(avatarBoxCenterX, avatarBoxCenterY, rx, ry, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        if (flashRatio > 0) {
+          drawRoundedRect(
+            avatarLeft + 3,
+            avatarTop + 3,
+            avatarBoxW - 6,
+            avatarMaxH - 6,
+            12,
+            `rgba(255,245,180,${0.32 * flashRatio})`,
+            null
+          );
+        }
+
+        ctx.restore();
+        ctx.restore();
+
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.font = "bold 22px Microsoft YaHei";
+        ctx.lineJoin = "round";
+        ctx.lineWidth = 3;
+        const nameChars = Array.from(d.name);
+        const nameBlockH = (nameChars.length - 1) * nameCharStep;
+        let ny = -nameBlockH / 2;
+        for (const ch of nameChars) {
+          ctx.strokeStyle = "rgba(255,255,255,0.9)";
+          ctx.strokeText(ch, nameColCenterX, ny);
+          ctx.fillStyle = "#1a2d4a";
+          ctx.fillText(ch, nameColCenterX, ny);
+          ny += nameCharStep;
+        }
+        ctx.textBaseline = "alphabetic";
+
+        ctx.beginPath();
+        ctx.fillStyle = skillBadge.color;
+        ctx.arc(cardW / 2 - 22, cardH / 2 - 26, 15, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = "#ffffffdd";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillStyle = "#fff";
+        ctx.font = "bold 16px Microsoft YaHei";
+        ctx.fillText(skillBadge.text, cardW / 2 - 22, cardH / 2 - 26);
+        ctx.restore();
+      });
+
+      const hpInnerPad = 3;
+      const hpInnerH = HP_BAR_HEIGHT - hpInnerPad * 2;
+      const hpInnerY = HP_BAR_TOP + hpInnerPad;
+      drawRoundedRect(40, HP_BAR_TOP, W - 80, HP_BAR_HEIGHT, 10, HUD_THEME.hpTrack, HUD_THEME.hpTrackStroke);
+      drawRoundedRect(
+        44,
+        hpInnerY,
+        (W - 88) * (state.playerHp / state.playerMaxHp),
+        hpInnerH,
+        6,
+        HUD_THEME.hpFill,
+        null
+      );
+      const hpTextY = HP_BAR_TOP + HP_BAR_HEIGHT / 2;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.font = HP_TEXT_FONT;
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = HUD_THEME.hpTextStroke;
+      ctx.strokeText(`${state.playerHp}/${state.playerMaxHp}`, W / 2, hpTextY);
+      ctx.fillStyle = HUD_THEME.hpText;
+      ctx.fillText(`${state.playerHp}/${state.playerMaxHp}`, W / 2, hpTextY);
+      ctx.textBaseline = "alphabetic";
+
+      drawTurnSkillHint();
+
+      ctx.setLineDash([10, 12]);
+      ctx.strokeStyle = "#ffffffc0";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(20, PLAYER_LINE_Y);
+      ctx.lineTo(W - 20, PLAYER_LINE_Y);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    function drawBattleField() {
+      const g = ctx.createLinearGradient(0, BATTLE_TOP, 0, H);
+      g.addColorStop(0, "#d5f49a");
+      g.addColorStop(1, "#f57f17");
+      ctx.fillStyle = g;
+      ctx.fillRect(0, BATTLE_TOP, W, H - BATTLE_TOP);
+    }
+
+    function drawMonsters() {
+      for (const m of state.monsters) {
+        const sprite =
+          m.type === "boss"
+            ? monsterImageProcessed.boss || monsterImages.boss
+            : m.type === "bombMob"
+              ? monsterImageProcessed.bombMob || monsterImages.bombMob
+              : monsterImageProcessed.normal || monsterImages.normal;
+        const canDrawSprite = sprite
+          && ((sprite.naturalWidth && sprite.naturalWidth > 0) || (sprite.width && sprite.width > 0));
+        const bodyRadius = m.radius * (m.type === "boss" ? 1.02 : 0.98);
+        const perspectiveS = m.rowMoveDisplayScale ?? 1;
+        const hitScale = getMonsterHitScale(m);
+        const rsp = getReinforceSpawnPresent(m);
+        const combinedScale = perspectiveS * hitScale * rsp.scale;
+        const sh = getMonsterHitShakeOffset(m);
+        const needHitShake = sh.x * sh.x + sh.y * sh.y > 0.0001;
+        const needSpawnFx = m.reinforceSpawnAge != null;
+        if (needSpawnFx) {
+          ctx.save();
+          ctx.globalAlpha *= rsp.alpha;
+          ctx.translate(0, rsp.dy);
+        }
+        if (needHitShake) {
+          ctx.save();
+          ctx.translate(sh.x, sh.y);
+        }
+        if (Math.abs(combinedScale - 1) > 1e-4) {
+          ctx.save();
+          ctx.translate(m.x, m.y);
+          ctx.scale(combinedScale, combinedScale);
+          ctx.translate(-m.x, -m.y);
+        }
+
+        // 地面阴影，增强单位立体感
+        ctx.beginPath();
+        ctx.fillStyle = "rgba(0,0,0,0.22)";
+        ctx.ellipse(m.x, m.y + bodyRadius * 0.72, bodyRadius * 0.58, bodyRadius * 0.22, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        if (canDrawSprite) {
+          const spriteW = sprite.naturalWidth || sprite.width;
+          const spriteH = sprite.naturalHeight || sprite.height;
+          const ringR = bodyRadius * 0.96;
+          const targetFaceD = ringR * 2;
+          const facePx = Math.min(spriteW, spriteH) * MONSTER_NORMAL_FACE_FRAC;
+          const dispScale =
+            m.type === "boss"
+              ? MONSTER_BOSS_DISPLAY_SCALE
+              : MONSTER_NORMAL_DISPLAY_SCALE;
+          const scale = (targetFaceD / facePx) * dispScale;
+          const drawW = spriteW * scale;
+          const drawH = spriteH * scale;
+          ctx.drawImage(sprite, m.x - drawW / 2, m.y - drawH / 2, drawW, drawH);
+        } else {
+          ctx.beginPath();
+          if (m.type === "boss") {
+            ctx.fillStyle = "#8e44ad";
+            ctx.strokeStyle = "#ffffffcc";
+            ctx.lineWidth = 3;
+          } else if (m.type === "bombMob") {
+            ctx.fillStyle = "#2c2c2c";
+            ctx.strokeStyle = "#f1c40f";
+            ctx.lineWidth = 3;
+          } else {
+            ctx.fillStyle = "#4fc3f7";
+            ctx.strokeStyle = "#ffffffcc";
+            ctx.lineWidth = 3;
+          }
+          ctx.arc(m.x, m.y, m.radius, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+        }
+
+        const hitFlashA = getMonsterHitFlashAlpha(m);
+        if (hitFlashA > 0.008) {
+          ctx.save();
+          ctx.globalAlpha *= hitFlashA;
+          ctx.fillStyle = "#ffffff";
+          ctx.beginPath();
+          if (m.type === "boss") {
+            ctx.arc(m.x, m.y, bodyRadius * 0.94, 0, Math.PI * 2);
+          } else {
+            ctx.arc(m.x, m.y, bodyRadius * 0.98, 0, Math.PI * 2);
+          }
+          ctx.fill();
+          ctx.restore();
+        }
+
+        if (m.type !== "bombMob") {
+          const hpText = String(Math.max(0, Math.floor(m.hp)));
+          const hpFont = m.type === "boss" ? 40 : 34;
+          ctx.font = `bold ${hpFont}px Microsoft YaHei`;
+          ctx.textAlign = "center";
+          ctx.lineWidth = 5;
+          ctx.strokeStyle = "#12345d";
+          const hpTextYOffset = m.type === "boss" ? bodyRadius * 0.5 : bodyRadius * 0.66;
+          ctx.strokeText(hpText, m.x, m.y + hpTextYOffset);
+          ctx.fillStyle = "#f5fbff";
+          ctx.fillText(hpText, m.x, m.y + hpTextYOffset);
+        }
+        if (Math.abs(combinedScale - 1) > 1e-4) ctx.restore();
+        if (needHitShake) ctx.restore();
+        if (needSpawnFx) ctx.restore();
+      }
+    }
+
+    function drawEggs() {
+      for (const e of state.eggs) {
+        const key =
+          e.bulletSpriteKey ||
+          resolveEggBulletSpriteKey({
+            ownerDuckName: e.ownerDuckName,
+            damageMin: e.damageMin,
+            homingTargetId: e.homingTargetId
+          });
+        const angle = Math.atan2(e.vy, e.vx);
+        const ok = drawBulletSpriteIfReady(key, e.x, e.y, e.radius, angle);
+        if (!ok) {
+          ctx.beginPath();
+          ctx.fillStyle = "#fffef4";
+          ctx.strokeStyle = "#f7d76a";
+          ctx.lineWidth = 2;
+          ctx.arc(e.x, e.y, e.radius, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+        }
+      }
+    }
+
+    function drawBombs() {
+      for (const b of state.bombs) {
+        const wobbleX = b.isFlying ? 0 : Math.sin(b.age * BOMB_SHAKE_FREQUENCY + b.phase) * BOMB_SHAKE_AMPLITUDE;
+        const wobbleY = b.isFlying ? 0 : Math.cos(b.age * BOMB_SHAKE_FREQUENCY + b.phase) * BOMB_SHAKE_AMPLITUDE * 0.45;
+        const cx = b.x + wobbleX;
+        const cy = b.y + wobbleY;
+        const speed = Math.hypot(b.vx, b.vy);
+        const bombAngle = speed > 8 ? Math.atan2(b.vy, b.vx) : 0;
+        const drawR = b.radius * BOMB_BULLET_SPRITE_DISPLAY_SCALE;
+        const ok = drawBulletSpriteIfReady("bomb", cx, cy, drawR, bombAngle);
+        if (!ok) {
+          ctx.beginPath();
+          ctx.fillStyle = "#ff4d4f";
+          ctx.strokeStyle = "#ffd6d6";
+          ctx.lineWidth = 2;
+          ctx.arc(cx, cy, drawR, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+        }
+
+        if (!b.isFlying) {
+          ctx.save();
+          const timerStr = `${Math.max(0, b.timer).toFixed(1)}s`;
+          ctx.font = "bold 27px Microsoft YaHei";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.lineWidth = 3;
+          ctx.strokeStyle = "#000000";
+          const timerY = cy + 8;
+          ctx.strokeText(timerStr, cx, timerY);
+          ctx.fillStyle = "#ff3333";
+          ctx.fillText(timerStr, cx, timerY);
+          ctx.restore();
+        }
+      }
+    }
+
+    function drawExplosions() {
+      for (const e of state.explosions) {
+        const t = clamp(e.time / e.duration, 0, 1);
+        const easeOut = 1 - (1 - t) * (1 - t);
+        const currentRadius = e.radius * easeOut;
+        const flashAlpha = clamp(1 - e.time / BOMB_FLASH_DURATION, 0, 1);
+
+        if (flashAlpha > 0) {
+          ctx.beginPath();
+          ctx.fillStyle = `rgba(255,255,235,${0.8 * flashAlpha})`;
+          ctx.arc(e.x, e.y, e.radius * 0.68, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        ctx.beginPath();
+        ctx.strokeStyle = `rgba(255,76,76,${0.85 * (1 - t)})`;
+        ctx.lineWidth = 9 * (1 - t) + 1;
+        ctx.arc(e.x, e.y, currentRadius, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.strokeStyle = `rgba(255,184,77,${0.7 * (1 - t)})`;
+        ctx.lineWidth = 4 * (1 - t) + 1;
+        ctx.arc(e.x, e.y, currentRadius * 0.62, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
+
+    function drawDamageTexts() {
+      for (const t of state.damageTexts) {
+        const progress = clamp(t.age / t.duration, 0, 1);
+        const y = t.y - t.rise * progress;
+        const alpha = 1 - progress;
+        ctx.font = `bold ${t.fontSize}px Microsoft YaHei`;
+        ctx.lineJoin = "round";
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = `rgba(85,20,20,${alpha})`;
+        ctx.textAlign = "center";
+        ctx.strokeText(`-${t.damage}`, t.x, y);
+        ctx.fillStyle = `rgba(255,96,96,${alpha})`;
+        ctx.fillText(`-${t.damage}`, t.x, y);
+      }
+    }
+
+    function drawCombo() {
+      if (!state.combo.active || state.combo.count < COMBO_MIN_DISPLAY) return;
+      const text = `连击x${state.combo.count}`;
+      const x = W - 26;
+      const y = PLAYER_LINE_Y + 112;
+      const popRatio = COMBO_POP_DURATION > 0 ? clamp(state.combo.popTimer / COMBO_POP_DURATION, 0, 1) : 0;
+      const scale = 1 + COMBO_POP_SCALE_MAX * popRatio;
+
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.scale(scale, scale);
+      ctx.textAlign = "right";
+      ctx.font = "bold 70px Microsoft YaHei";
+      ctx.lineJoin = "round";
+      ctx.shadowColor = "rgba(255,196,58,0.45)";
+      ctx.shadowBlur = 18;
+
+      ctx.lineWidth = 12;
+      ctx.strokeStyle = "#6d1200";
+      ctx.strokeText(text, 0, 0);
+
+      ctx.lineWidth = 5;
+      ctx.strokeStyle = "#b14e00";
+      ctx.strokeText(text, 0, 0);
+
+      const g = ctx.createLinearGradient(0, -58, 0, 8);
+      g.addColorStop(0, "#fff8b8");
+      g.addColorStop(0.45, "#ffef61");
+      g.addColorStop(1, "#ffd74a");
+      ctx.fillStyle = g;
+      ctx.fillText(text, 0, 0);
+      ctx.restore();
+    }
+
+    function drawMultiKillBanner() {
+      if (!state.multiKill.active) return;
+      const n = state.multiKill.n;
+      if (n < 2) return;
+      const { alpha, scale, dy } = sampleMultiKillAnim(state.multiKill.t);
+      if (alpha <= 0.01) return;
+      const text = `${n}连杀`;
+      const barW = W * MULTIKILL_BAR_WIDTH_RATIO;
+      const barH = MULTIKILL_BAR_HEIGHT;
+      const cx = W / 2;
+      const cy = MULTIKILL_BANNER_Y + dy;
+
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.translate(cx, cy);
+      ctx.scale(scale, scale);
+
+      roundedRectPath(-barW / 2, -barH / 2, barW, barH, MULTIKILL_BAR_CORNER_R);
+      ctx.fillStyle = "rgba(12, 16, 22, 0.58)";
+      ctx.fill();
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.14)";
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.font = "bold 44px Microsoft YaHei";
+      ctx.lineJoin = "round";
+      ctx.lineWidth = 7;
+      ctx.strokeStyle = "rgba(0, 0, 0, 0.55)";
+      ctx.strokeText(text, 0, 0);
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = "rgba(0, 40, 20, 0.55)";
+      ctx.strokeText(text, 0, 0);
+      ctx.shadowColor = "rgba(34, 255, 120, 0.55)";
+      ctx.shadowBlur = 16;
+      ctx.fillStyle = "#6dff9a";
+      ctx.fillText(text, 0, 0);
+      ctx.shadowBlur = 0;
+      ctx.restore();
+    }
+
+    function decimateAimPathForDraw(points, minDist) {
+      if (points.length <= 2) return points;
+      const out = [points[0]];
+      for (let i = 1; i < points.length - 1; i += 1) {
+        const p = points[i];
+        const last = out[out.length - 1];
+        if (Math.hypot(p.x - last.x, p.y - last.y) >= minDist) out.push(p);
+      }
+      const end = points[points.length - 1];
+      const last = out[out.length - 1];
+      if (Math.hypot(end.x - last.x, end.y - last.y) > 0.5) out.push(end);
+      return out;
+    }
+
+    function drawAimLine() {
+      if (!state.aiming || state.shotsLeft <= 0 || state.gameOver) return;
+      const origin = getCurrentShootOrigin();
+      let dx = state.aimPos.x - origin.x;
+      let dy = state.aimPos.y - origin.y;
+      if (dy < 30) dy = 30;
+      const dir = normalize(dx, dy);
+      const pathRaw = buildAimPath(dir, origin);
+      const path = decimateAimPathForDraw(pathRaw, AIM_DRAW_MIN_POINT_DIST);
+      if (path.length < 2) return;
+
+      const dashPattern = [12, 10];
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+
+      function strokePath(strokeStyle, lineW, dash, blur, blurColor) {
+        ctx.beginPath();
+        ctx.moveTo(path[0].x, path[0].y);
+        for (let i = 1; i < path.length; i += 1) {
+          ctx.lineTo(path[i].x, path[i].y);
+        }
+        ctx.strokeStyle = strokeStyle;
+        ctx.lineWidth = lineW;
+        ctx.setLineDash(dash);
+        ctx.shadowBlur = blur;
+        ctx.shadowColor = blurColor || "transparent";
+        ctx.stroke();
+      }
+
+      ctx.save();
+      ctx.globalAlpha = 0.92;
+      strokePath("rgba(35, 75, 120, 0.55)", 9.75, dashPattern, 21, "rgba(60, 140, 220, 0.45)");
+      ctx.shadowBlur = 0;
+      strokePath("rgba(255, 252, 245, 0.98)", 4.8, dashPattern, 0, "");
+      strokePath("rgba(120, 210, 255, 0.88)", 2.1, dashPattern, 0, "");
+      ctx.restore();
+      ctx.setLineDash([]);
+
+      ctx.beginPath();
+      ctx.fillStyle = "#ffe082";
+      ctx.arc(origin.x, origin.y, 18, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.88)";
+      ctx.lineWidth = 3.3;
+      ctx.stroke();
+    }
+
+    function drawResult() {
+      if (!state.gameOver) return;
+      ctx.fillStyle = "#00000099";
+      ctx.fillRect(0, 0, W, H);
+
+      drawRoundedRect(100, H / 2 - 180, W - 200, 320, 20, "#1b2330", "#ffffff99");
+      ctx.textAlign = "center";
+      ctx.fillStyle = state.win ? "#67ff7f" : "#ff7676";
+      ctx.font = "bold 56px Microsoft YaHei";
+      ctx.fillText(state.win ? "挑战成功" : "挑战失败", W / 2, H / 2 - 70);
+
+      ctx.fillStyle = "#fff";
+      ctx.font = "32px Microsoft YaHei";
+      ctx.fillText(`击败怪物: ${state.kills}`, W / 2, H / 2 - 8);
+      ctx.fillText(`到达关卡: ${state.round}`, W / 2, H / 2 + 36);
+
+      const b = state.btnRect;
+      drawRoundedRect(b.x, b.y, b.w, b.h, 14, "#2ecc71", "#ffffffcc");
+      ctx.fillStyle = "#102611";
+      ctx.font = "bold 32px Microsoft YaHei";
+      ctx.fillText("重新开始", W / 2, b.y + 46);
+    }
+
+    function draw() {
+      let shakeX = 0;
+      let shakeY = 0;
+      if (state.shakeStrength > 0) {
+        shakeX = rand(-state.shakeStrength, state.shakeStrength);
+        shakeY = rand(-state.shakeStrength, state.shakeStrength);
+      }
+
+      ctx.save();
+      ctx.translate(shakeX, shakeY);
+      if (battleBgReady && battleBgImage.naturalWidth > 0) {
+        ctx.drawImage(battleBgImage, 0, 0, W, H);
+      } else {
+        ctx.fillStyle = "#50c9ce";
+        ctx.fillRect(0, 0, W, BATTLE_TOP);
+        drawBattleField();
+      }
+      drawHud();
+      drawCombo();
+      drawMonsters();
+      drawDamageTexts();
+      drawEggs();
+      drawBombs();
+      drawExplosions();
+      drawMultiKillBanner();
+      drawAimLine();
+      drawResult();
+      ctx.restore();
+    }
+
+    function getCanvasPoint(ev) {
+      const rect = canvas.getBoundingClientRect();
+      const x = ((ev.clientX - rect.left) / rect.width) * W;
+      const y = ((ev.clientY - rect.top) / rect.height) * H;
+      return { x, y };
+    }
+
+    function onPointerDown(ev) {
+      const p = getCanvasPoint(ev);
+
+      if (state.gameOver) {
+        const b = state.btnRect;
+        if (p.x >= b.x && p.x <= b.x + b.w && p.y >= b.y && p.y <= b.y + b.h) {
+          resetGame();
+        }
+        return;
+      }
+
+      if (state.shotsLeft <= 0) return;
+      if (p.y < PLAYER_LINE_Y) return;
+      state.aiming = true;
+      state.aimPos = p;
+    }
+
+    function onPointerMove(ev) {
+      if (!state.aiming) return;
+      const p = getCanvasPoint(ev);
+      state.aimPos = p;
+    }
+
+    function onPointerUp(ev) {
+      if (!state.aiming || state.shotsLeft <= 0 || state.gameOver) return;
+      const p = getCanvasPoint(ev);
+      state.aiming = false;
+
+      const origin = getCurrentShootOrigin();
+      let dx = p.x - origin.x;
+      let dy = p.y - origin.y;
+      if (dy < 30) dy = 30;
+      const dir = normalize(dx, dy);
+      fireEgg(dir);
+    }
+
+    canvas.addEventListener("pointerdown", onPointerDown);
+    canvas.addEventListener("pointermove", onPointerMove);
+    canvas.addEventListener("pointerup", onPointerUp);
+    canvas.addEventListener("pointercancel", () => {
+      state.aiming = false;
+    });
+
+    function renderDebugParams() {
+      const debugParams = document.getElementById("debugParams");
+      if (!debugParams) return;
+      const rows = [
+        ["ACTIVE_PHYSICS_PRESET", ACTIVE_PHYSICS_PRESET, "当前启用物理预设"],
+        ["physics.eggInitialSpeed", physics.eggInitialSpeed, "发射初速度"],
+        ["physics.eggGravity", physics.eggGravity, "重力加速度"],
+        ["physics.eggAirDrag", physics.eggAirDrag, "空气阻力"],
+        ["physics.eggWallBounceDamp", physics.eggWallBounceDamp, "左右墙反弹衰减"],
+        ["physics.eggTopBounceDamp", physics.eggTopBounceDamp, "顶边反弹衰减"],
+        ["physics.eggMonsterBounceDamp", physics.eggMonsterBounceDamp, "怪物反弹基础保速"],
+        ["physics.eggHitDownBias", physics.eggHitDownBias, "怪物碰撞向下偏置"],
+        ["BOUNCE_FORCE_RANDOM_MIN", BOUNCE_FORCE_RANDOM_MIN, "墙体反弹随机下限"],
+        ["BOUNCE_FORCE_RANDOM_MAX", BOUNCE_FORCE_RANDOM_MAX, "墙体反弹随机上限"],
+        ["MONSTER_BOUNCE_RANDOM_MIN", MONSTER_BOUNCE_RANDOM_MIN, "怪物反弹随机下限"],
+        ["MONSTER_BOUNCE_RANDOM_MAX", MONSTER_BOUNCE_RANDOM_MAX, "怪物反弹随机上限"],
+        ["MONSTER_MIN_OUTWARD_REBOUND_SPEED", MONSTER_MIN_OUTWARD_REBOUND_SPEED, "怪物碰撞外向反弹底线"],
+        ["MONSTER_MIN_UPWARD_REBOUND_SPEED", MONSTER_MIN_UPWARD_REBOUND_SPEED, "怪物碰撞向上反弹底线"],
+        ["MONSTER_MIN_REBOUND_SPEED", MONSTER_MIN_REBOUND_SPEED, "怪物碰撞总速度底线"],
+        ["MONSTER_REBOUND_KEEP_RATIO", MONSTER_REBOUND_KEEP_RATIO, "怪物碰撞速度保留比例"],
+        ["FOLLOWUP_MONSTER_REBOUND_BOOST", FOLLOWUP_MONSTER_REBOUND_BOOST, "后续撞怪反弹额外增幅"],
+        ["FOLLOWUP_MONSTER_MIN_REBOUND_SPEED", FOLLOWUP_MONSTER_MIN_REBOUND_SPEED, "后续撞怪最小总速度"],
+        ["FOLLOWUP_MONSTER_MIN_UPWARD_REBOUND_SPEED", FOLLOWUP_MONSTER_MIN_UPWARD_REBOUND_SPEED, "后续撞怪最小向上速度"],
+        ["MONSTER_MIN_TOTAL_REBOUND_SPEED", MONSTER_MIN_TOTAL_REBOUND_SPEED, "旧总速度底线开关"],
+        ["MONSTER_HIT_COOLDOWN", MONSTER_HIT_COOLDOWN, "怪物碰撞冷却时间"],
+        ["FIRST_BOUNCE_UPWARD_SPEED_CAP_FACTOR", FIRST_BOUNCE_UPWARD_SPEED_CAP_FACTOR, "首次反弹向上上限比例"],
+        ["NEXT_BOUNCE_UPWARD_SPEED_CAP_FACTOR", NEXT_BOUNCE_UPWARD_SPEED_CAP_FACTOR, "后续反弹向上上限比例"],
+        ["BOUNCE_SPEED_GAIN_PER_HIT", BOUNCE_SPEED_GAIN_PER_HIT, "每次反弹叠速增量"],
+        ["BOUNCE_SPEED_GAIN_MAX", BOUNCE_SPEED_GAIN_MAX, "反弹叠速上限"],
+        ["EGG_FINAL_SPEED_MULTIPLIER", EGG_FINAL_SPEED_MULTIPLIER, "全局位移倍率"],
+        ["AIM_PREDICT_STEPS", AIM_PREDICT_STEPS, "轨迹预测步数"],
+        ["AIM_PREDICT_DT", AIM_PREDICT_DT, "轨迹预测步长"],
+        ["AIM_PREDICT_SUB_STEPS", AIM_PREDICT_SUB_STEPS, "每步内细分（防引线穿鼠）"],
+        ["EGG_RADIUS", EGG_RADIUS, "子弹半径"]
+      ];
+      debugParams.textContent = rows
+        .map(([key, value, note]) => `${key}: ${value}\n- ${note}`)
+        .join("\n\n");
+    }
+
+    const debugRestartBtn = document.getElementById("debugRestartBtn");
+    if (debugRestartBtn) {
+      debugRestartBtn.addEventListener("click", () => {
+        resetGame();
+      });
+    }
+    const debugRound2Btn = document.getElementById("debugRound2Btn");
+    if (debugRound2Btn) {
+      debugRound2Btn.addEventListener("click", () => {
+        jumpToDebugRound2();
+      });
+    }
+    const debugBossLevelBtn = document.getElementById("debugBossLevelBtn");
+    if (debugBossLevelBtn) {
+      debugBossLevelBtn.addEventListener("click", () => {
+        jumpToDebugBossLevel();
+      });
+    }
+    const duckTestButtons = document.querySelectorAll(".duck-test-btn");
+    const duckTooltip = document.getElementById("duckTooltip");
+
+    function hideDuckTooltip() {
+      if (!duckTooltip) return;
+      duckTooltip.classList.remove("show");
+      duckTooltip.setAttribute("aria-hidden", "true");
+    }
+
+    function showDuckTooltip(btn, eventX, eventY) {
+      if (!duckTooltip) return;
+      const duckName = btn.getAttribute("data-duck-name");
+      const text = DUCK_TOOLTIP_TEXT[duckName];
+      if (!text) return;
+      duckTooltip.textContent = text;
+      duckTooltip.classList.add("show");
+      duckTooltip.setAttribute("aria-hidden", "false");
+
+      const pad = 14;
+      const boxW = duckTooltip.offsetWidth;
+      const boxH = duckTooltip.offsetHeight;
+      let left = eventX + 12;
+      let top = eventY + 12;
+      if (left + boxW > window.innerWidth - pad) {
+        left = Math.max(pad, eventX - boxW - 12);
+      }
+      if (top + boxH > window.innerHeight - pad) {
+        top = Math.max(pad, eventY - boxH - 12);
+      }
+      duckTooltip.style.left = `${left}px`;
+      duckTooltip.style.top = `${top}px`;
+    }
+
+    duckTestButtons.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const duckName = btn.getAttribute("data-duck-name");
+        const config = DUCK_TEST_CONFIGS[duckName];
+        if (!config) return;
+        state.ducks = [{ ...config }];
+        resetGame();
+      });
+      btn.addEventListener("mouseenter", (ev) => {
+        showDuckTooltip(btn, ev.clientX, ev.clientY);
+      });
+      btn.addEventListener("mousemove", (ev) => {
+        showDuckTooltip(btn, ev.clientX, ev.clientY);
+      });
+      btn.addEventListener("mouseleave", hideDuckTooltip);
+    });
+    renderDebugParams();
+
+    let last = performance.now();
+    function loop(now) {
+      const dt = Math.min(0.033, (now - last) / 1000);
+      last = now;
+      update(dt);
+      draw();
+      requestAnimationFrame(loop);
+    }
+  </script>
+</body>
+</html>

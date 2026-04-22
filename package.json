@@ -1,0 +1,13 @@
+{
+  "name": "cat-battle-assets",
+  "private": true,
+  "type": "module",
+  "description": "Dev-only: image optimization with sharp",
+  "scripts": {
+    "optimize:bullets": "node scripts/optimize-bullets.mjs",
+    "optimize:rest": "node scripts/optimize-assets.mjs"
+  },
+  "devDependencies": {
+    "sharp": "^0.33.5"
+  }
+}
